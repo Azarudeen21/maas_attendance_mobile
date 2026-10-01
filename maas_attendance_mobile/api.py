@@ -1,4 +1,4 @@
-"""Read-only setup APIs. Attendance writes are deliberately not implemented yet."""
+"""Authenticated profile, capabilities and allowlisted online test attendance."""
 
 from importlib import import_module
 
@@ -49,7 +49,7 @@ def profile():
 @frappe.whitelist(methods=["GET"])
 def capabilities():
     """Verify installed HR schema before mobile attendance writes are added."""
-    _linked_employee()
+    employee = _linked_employee()
     installed = frappe.get_installed_apps()
     if "erpnext" not in installed or "hrms" not in installed:
         frappe.throw("ERPNext and HRMS must be installed.", frappe.ValidationError)
@@ -69,12 +69,28 @@ def capabilities():
     candidates = required + [
         "device_id", "skip_auto_attendance", "latitude", "longitude", "geolocation"
     ]
+    from maas_attendance_mobile.attendance import enabled_for, settings
     return {
         "api_version": 1,
         "app_version": __version__,
         "versions": versions,
         "employee_checkin_fields": [field for field in candidates if meta.has_field(field)],
         "attendance_submission_enabled": False,
+        "online_test_submission_enabled": enabled_for(employee["name"], settings()),
+        "test_mode": True,
         "offline_submission_enabled": False,
         "face_verification_enabled": False,
     }
+
+
+@frappe.whitelist(methods=["GET"])
+def attendance_status():
+    from maas_attendance_mobile.attendance import status
+    return status(_linked_employee())
+
+
+@frappe.whitelist(methods=["POST"])
+def punch(request_id, log_type, timestamp, device_id, app_version):
+    """No employee, skip-attendance or face-verification input is accepted."""
+    from maas_attendance_mobile.attendance import submit
+    return submit(_linked_employee(), request_id, log_type, timestamp, device_id, app_version)

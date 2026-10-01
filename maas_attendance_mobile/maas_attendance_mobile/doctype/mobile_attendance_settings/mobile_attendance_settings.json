@@ -1,0 +1,43 @@
+{
+ "doctype": "DocType",
+ "name": "Mobile Attendance Settings",
+ "module": "MAAS Attendance Mobile",
+ "engine": "InnoDB",
+ "field_order": [
+  "notice",
+  "enable_test_attendance",
+  "test_employee"
+ ],
+ "fields": [
+  {
+   "fieldname": "notice",
+   "fieldtype": "HTML",
+   "label": "Test checkpoint",
+   "options": "<p>Development test only. All MAAS punches skip auto attendance. GPS, face verification and offline submission are unavailable.</p>"
+  },
+  {
+   "fieldname": "enable_test_attendance",
+   "fieldtype": "Check",
+   "label": "Enable Online Test Attendance",
+   "default": "0"
+  },
+  {
+   "fieldname": "test_employee",
+   "fieldtype": "Link",
+   "label": "Test Employee",
+   "options": "Employee",
+   "description": "Choose only your dedicated Mobile Test employee. This login must use the custom punch API."
+  }
+ ],
+ "permissions": [
+  {
+   "role": "System Manager",
+   "read": 1,
+   "write": 1,
+   "create": 1
+  }
+ ],
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "issingle": 1
+}

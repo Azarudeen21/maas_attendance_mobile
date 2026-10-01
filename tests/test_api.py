@@ -25,7 +25,7 @@ class ApiTests(unittest.TestCase):
         self.frappe = types.ModuleType("frappe")
         self.frappe.__version__ = "16.36.1"
         self.frappe.session = types.SimpleNamespace(user="employee@example.test")
-        self.frappe.db = types.SimpleNamespace(get_value=Mock(return_value=1))
+        self.frappe.db = types.SimpleNamespace(get_value=Mock(return_value=1), get_singles_dict=Mock(return_value={}))
         self.frappe.PermissionError = FakePermissionError
         self.frappe.AuthenticationError = FakeAuthenticationError
         self.frappe.ValidationError = ValueError
@@ -47,6 +47,8 @@ class ApiTests(unittest.TestCase):
             sys.modules[name] = module
         import maas_attendance_mobile.api
         self.api = importlib.reload(maas_attendance_mobile.api)
+        import maas_attendance_mobile.attendance
+        self.attendance = importlib.reload(maas_attendance_mobile.attendance)
 
     def tearDown(self):
         for name, module in self.previous.items():
