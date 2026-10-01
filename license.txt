@@ -1,0 +1,4 @@
+Copyright (c) 2026 MAAS Consult. All rights reserved.
+
+This repository contains private application code. No permission is granted
+to redistribute or sublicense it without the owner's written permission.

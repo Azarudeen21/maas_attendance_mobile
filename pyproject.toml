@@ -1,0 +1,21 @@
+[project]
+name = "maas_attendance_mobile"
+description = "MAAS mobile attendance integration for Frappe HR"
+authors = [{name = "MAAS Consult"}]
+requires-python = ">=3.10"
+readme = "README.md"
+dynamic = ["version"]
+dependencies = []
+license = {file = "license.txt"}
+
+[build-system]
+requires = ["flit_core>=3.4,<4"]
+build-backend = "flit_core.buildapi"
+
+[tool.bench.frappe-dependencies]
+frappe = ">=15.0.0,<17.0.0"
+erpnext = ">=15.0.0,<17.0.0"
+hrms = ">=15.0.0,<17.0.0"
+
+[deploy.dependencies.apt]
+packages = []
