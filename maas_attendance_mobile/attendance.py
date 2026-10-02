@@ -45,6 +45,7 @@ def status(employee):
                          "IN" if not latest or latest["log_type"] == "OUT" else None,
         "skip_auto_attendance": True,
         "location_required": str(config.get("require_test_location", 0)) == "1",
+        "approved_device_required": str(config.get("require_approved_device", 0)) == "1",
     }
 
 
@@ -59,7 +60,7 @@ def _reply(receipt, duplicate):
     }
 
 
-def submit(employee, request_id, log_type, timestamp, device_id, app_version, location=None):
+def submit(employee, request_id, log_type, timestamp, device_id, app_version, location=None, device_secret=None):
     try:
         payload, event = parse_request(request_id, log_type, timestamp, device_id, app_version)
         if location is not None:
@@ -81,6 +82,10 @@ def submit(employee, request_id, log_type, timestamp, device_id, app_version, lo
         frappe.throw("This login is not eligible for attendance.", frappe.PermissionError)
     config = settings()
     require_enabled(employee["name"], config)
+    registered_device = None
+    if str(config.get("require_approved_device", 0)) == "1":
+        from maas_attendance_mobile.devices import require_approved
+        registered_device = require_approved(employee, device_id, device_secret)
     fingerprint = request_hash(payload, employee["name"], user)
     receipt = frappe.db.get_value(RECEIPT, request_id, [
         "name", "employee", "request_hash", "checkin", "log_type", "event_time", "timestamp_utc",
@@ -134,6 +139,7 @@ def submit(employee, request_id, log_type, timestamp, device_id, app_version, lo
             "workplace": gps["workplace"] if gps else None,
             "distance_m": gps["distance_m"] if gps else None,
             "accuracy_m": gps["accuracy_m"] if gps else None,
+            "registered_device": registered_device,
         }).insert(ignore_permissions=True)
     finally:
         frappe.flags.maas_test_punch = previous

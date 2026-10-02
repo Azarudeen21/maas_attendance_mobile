@@ -104,6 +104,32 @@ class AttendanceTests(unittest.TestCase):
             self.submit()
         self.frappe.get_doc.assert_not_called()
 
+    def test_device_requirement_rejects_missing_credentials_before_writes(self):
+        self.config['require_approved_device'] = '1'
+        with self.assertRaises(test_api.FakePermissionError):
+            self.submit()
+        self.frappe.get_doc.assert_not_called()
+
+    def test_approved_device_checked_even_for_exact_receipt_retry(self):
+        from unittest.mock import patch
+        self.config['require_approved_device'] = '1'
+        self.receipt = self.saved_receipt()
+        with patch('maas_attendance_mobile.devices.require_approved', return_value='REGISTERED') as check:
+            self.assertTrue(self.submit(device_secret='a'*64)['duplicate'])
+            check.assert_called_once_with(self.employee, DEVICE, 'a'*64)
+        with patch('maas_attendance_mobile.devices.require_approved', side_effect=test_api.FakePermissionError('revoked')):
+            with self.assertRaises(test_api.FakePermissionError):
+                self.submit(device_secret='a'*64)
+
+    def test_new_approved_device_receipt_does_not_store_secret(self):
+        from unittest.mock import patch
+        self.config['require_approved_device'] = '1'
+        with patch('maas_attendance_mobile.devices.require_approved', return_value='REGISTERED'):
+            self.submit(device_secret='a'*64)
+        self.assertEqual(self.created[1]['registered_device'], 'REGISTERED')
+        self.assertNotIn('device_secret', self.created[0])
+        self.assertNotIn('device_secret', self.created[1])
+
     def test_gps_uses_server_company_and_records_evidence(self):
         self.config['require_test_location'] = '1'
         self.submit(location=self.gps())

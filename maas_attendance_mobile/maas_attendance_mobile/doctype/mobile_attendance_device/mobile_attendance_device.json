@@ -1,0 +1,20 @@
+{
+ "doctype": "DocType", "name": "Mobile Attendance Device", "module": "MAAS Attendance Mobile", "engine": "InnoDB",
+ "autoname": "field:registration_id", "title_field": "device_label", "track_changes": 1,
+ "field_order": ["registration_id", "employee", "user", "device_id", "device_label", "status", "secret_hash", "approved_by", "approved_at", "revoked_by", "revoked_at"],
+ "fields": [
+  {"fieldname": "registration_id", "fieldtype": "Data", "label": "Registration ID", "reqd": 1, "unique": 1, "read_only": 1},
+  {"fieldname": "employee", "fieldtype": "Link", "options": "Employee", "label": "Employee", "reqd": 1, "read_only": 1, "in_list_view": 1},
+  {"fieldname": "user", "fieldtype": "Link", "options": "User", "label": "User", "reqd": 1, "read_only": 1},
+  {"fieldname": "device_id", "fieldtype": "Data", "label": "Installation UUID", "reqd": 1, "read_only": 1},
+  {"fieldname": "device_label", "fieldtype": "Data", "label": "Device Label", "reqd": 1, "read_only": 1, "in_list_view": 1},
+  {"fieldname": "status", "fieldtype": "Select", "options": "Pending\nApproved\nRevoked", "label": "Status", "default": "Pending", "reqd": 1, "in_list_view": 1},
+  {"fieldname": "secret_hash", "fieldtype": "Data", "label": "Credential Hash", "read_only": 1, "hidden": 1, "reqd": 1},
+  {"fieldname": "approved_by", "fieldtype": "Link", "options": "User", "label": "Approved By", "read_only": 1},
+  {"fieldname": "approved_at", "fieldtype": "Datetime", "label": "Approved At", "read_only": 1},
+  {"fieldname": "revoked_by", "fieldtype": "Link", "options": "User", "label": "Revoked By", "read_only": 1},
+  {"fieldname": "revoked_at", "fieldtype": "Datetime", "label": "Revoked At", "read_only": 1}
+ ],
+ "permissions": [{"role": "System Manager", "read": 1, "write": 1}, {"role": "HR Manager", "read": 1, "write": 1}],
+ "sort_field": "modified", "sort_order": "DESC"
+}

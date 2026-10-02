@@ -7,7 +7,7 @@
   "notice",
   "enable_test_attendance",
   "test_employee",
-  "require_test_location"
+  "require_test_location", "require_approved_device"
  ],
  "fields": [
   {
@@ -30,7 +30,8 @@
    "description": "Choose only your dedicated Mobile Test employee. This login must use the custom punch API."
   },
   {"fieldname": "require_test_location", "fieldtype": "Check", "label": "Require GPS Workplace Check for Test Punches", "default": "0",
-   "description": "Enable only after configuring an enabled Mobile Attendance Workplace for the test employee's company. Both IN and OUT require a fresh precise location."}
+   "description": "Enable only after configuring an enabled Mobile Attendance Workplace for the test employee's company. Both IN and OUT require a fresh precise location."},
+  {"fieldname": "require_approved_device", "fieldtype": "Check", "label": "Require Approved Device for Test Punches", "default": "0"}
  ],
  "permissions": [
   {

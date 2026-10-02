@@ -14,7 +14,7 @@
   "device_id",
   "app_version",
   "test_mode",
-  "location_json", "workplace", "distance_m", "accuracy_m"
+  "location_json", "workplace", "distance_m", "accuracy_m", "registered_device"
  ],
  "fields": [
   {
@@ -85,7 +85,8 @@
   {"fieldname": "location_json", "fieldtype": "Small Text", "label": "Original GPS Payload", "read_only": 1},
   {"fieldname": "workplace", "fieldtype": "Link", "options": "Mobile Attendance Workplace", "label": "Validated Workplace", "read_only": 1},
   {"fieldname": "distance_m", "fieldtype": "Float", "precision": "3", "label": "Distance from Centre (metres)", "read_only": 1},
-  {"fieldname": "accuracy_m", "fieldtype": "Float", "precision": "3", "label": "GPS Uncertainty (metres)", "read_only": 1}
+  {"fieldname": "accuracy_m", "fieldtype": "Float", "precision": "3", "label": "GPS Uncertainty (metres)", "read_only": 1},
+  {"fieldname": "registered_device", "fieldtype": "Link", "options": "Mobile Attendance Device", "label": "Approved Device", "read_only": 1}
  ],
  "permissions": [
   {

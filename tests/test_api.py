@@ -15,7 +15,7 @@ class FakeAuthenticationError(Exception):
     pass
 
 
-def fail(message, exception):
+def fail(message, exception=ValueError):
     raise exception(message)
 
 
@@ -49,6 +49,8 @@ class ApiTests(unittest.TestCase):
         self.api = importlib.reload(maas_attendance_mobile.api)
         import maas_attendance_mobile.attendance
         self.attendance = importlib.reload(maas_attendance_mobile.attendance)
+        import maas_attendance_mobile.devices
+        self.devices = importlib.reload(maas_attendance_mobile.devices)
 
     def tearDown(self):
         for name, module in self.previous.items():

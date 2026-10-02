@@ -1,7 +1,8 @@
 # MAAS Attendance Mobile — Frappe app
 
-Version 0.3.0 adds optional server GPS workplace checks to the online TEST
-punch service. Authentication, profile and basic online test punches were
+Version 0.4.0 adds device registration, HR approval/revocation, and optional
+approved-device enforcement alongside server GPS workplace checks.
+Authentication, profile and basic online test punches were
 verified on the v16 test site. This release requires migration and live GPS
 policy validation. It is not a complete production attendance app.
 
@@ -15,8 +16,9 @@ foreground GPS capture.
 
 For an existing installation deploy the new revision and migrate the test site
 through Frappe Cloud; do not uninstall/reinstall. Migration adds Mobile
-Attendance Workplace and GPS fields to settings and audit transactions.
-GPS enforcement defaults off. No checkin is created by installation.
+Attendance Workplace, Mobile Attendance Device, and GPS/device fields to
+settings and audit transactions. Both enforcement requirements default off.
+No checkin is created by installation.
 Keep a current test-site backup before migration.
 
 ## API contract
@@ -29,6 +31,8 @@ sessions both use the server session identity. Paths below are prefixed by
 - GET capabilities: actual host schema/version and capability flags.
 - GET attendance_status: current employee's latest checkin and test gate.
 - POST punch: allowlisted online test IN/OUT only.
+- POST register_device: register the current employee's installation as Pending.
+- POST device_status: verify credentials and return approval status.
 
 Punch accepts request_id (canonical UUID v4), log_type (IN or OUT), timestamp
 (ISO 8601 with timezone offset), device_id (installation UUID v4), app_version
@@ -46,7 +50,8 @@ Punch accepts request_id (canonical UUID v4), log_type (IN or OUT), timestamp
 
 Example values are illustrative. Generate a fresh UUID/current timestamp for a
 NEW punch. Retain every request value when retrying a lost response. Device
-UUID is audit metadata, not trusted device approval. No employee/user ID,
+UUID alone is audit metadata; approved-device enforcement additionally requires
+the separate installation credential. No employee/user ID,
 skip-attendance or face-verification input authorizes a punch. Employee
 lookup enforces normal read permissions, enabled login, Employee role, exactly
 one linked Employee and Active status.
@@ -75,12 +80,47 @@ Exact retry hashes include GPS and return the original result without requiring
 a new GPS sample or rechecking a changed workplace. The test gate still applies.
 
 These rules validate reported coordinates. They do not establish spoof-proof
-physical presence. Device approval, face verification, offline sync and
+physical presence. Face verification, offline sync and
 production attendance policies remain pending. The standalone GPS diagnostic
 card remains local-only; the location attached to an enabled GPS punch is sent
 to ERPNext. Do not configure emulator coordinates as a real workplace.
 
 ## Online test gate
+
+## Device registration and approval (v0.4.0)
+
+POST register_device accepts installation UUID device_id, a 64-character
+lowercase random hex device_secret, and device_label. The app generates 256
+random bits and securely saves credentials per account BEFORE registration.
+Registration derives employee/user from the authenticated session, serializes
+on the employee row, and starts Pending. Lost-response retries with the same
+credentials return the same record. The server stores only a SHA256 secret
+hash. No secret/hash is returned through device status. A registration label
+is immutable after enrollment; retries do not rotate credentials.
+
+POST device_status checks authenticated ownership and the exact secret before
+returning Pending/Approved/Revoked. HR Manager/System Manager reviews Mobile
+Attendance Device records. Another reviewer must approve; self-approval is
+blocked. Only Pending->Approved/Revoked or Approved->Revoked are allowed.
+Reviewer/time are recorded automatically. Revoked cannot be reactivated;
+audit records cannot be deleted. At most five non-revoked registrations per
+employee are allowed. Replacement-installation enrollment UI remains pending.
+
+Require Approved Device for Test Punches defaults off. When enabled, the punch
+service requires the UUID plus matching device_secret and Approved status under
+a device row lock. This is checked even for exact punch retries, so revocation
+also blocks receipt retries. A secret never enters the canonical punch hash,
+pending punch journal, or audit receipt. The client attaches it transiently
+from secure storage. Receipts retain the approved registration link.
+
+An installation credential is not hardware attestation. Copying credentials
+from a compromised device can impersonate that installation. Hardware-backed
+keys/attestation and physical-device secure-storage checks are not implemented.
+Secrets must never be copied into console commands, screenshots or logs.
+The standalone GPS diagnostic card remains local-only; GPS punches separately
+send their captured location to the server.
+
+## Online test gate settings
 
 As System Manager open Mobile Attendance Settings. Leave Enable Online Test
 Attendance unchecked for initial deployment/API validation. Then select ONLY
@@ -95,7 +135,7 @@ requiring location may reject GPS-free tests; do not disable HR security policy
 to force a test through. The service converts the ORIGINAL offset-bearing
 instant to site timezone at second resolution (Asia/Riyadh on verified site).
 New online events may be at most 15 minutes old or 2 minutes ahead; offline
-queue acceptance is not implemented. No history requires IN first; then IN/OUT
+queue acceptance is not implemented. With no history, IN is required first; then IN/OUT
 alternate. Equal/older times and latest logs without IN/OUT fail closed.
 State uses standard Employee Checkin history: avoid simultaneous manual HR
 edits for the dedicated test employee during these tests.
@@ -121,9 +161,9 @@ including Administrator. Receipts preserve original request audit information.
 From repository root: python -m unittest discover -s tests -v
 These tests mock Frappe and verify pure rules/service contracts. They do not
 prove database rollback, locks, hook dispatch, OAuth middleware or installation.
-Required dedicated test-site checks before Flutter buttons:
+Live test-site checks for this revision:
 
-1. Gate disabled: app_version 0.2.0, test flag false, status readable only by
+1. Gate disabled: app_version 0.4.0, test flag false, status readable only by
    authenticated linked employee. Guests reject without employee details.
 2. Enable only Mobile Test. Fresh IN creates one standard checkin + receipt,
    correct employee/local time and Skip Auto Attendance checked.
@@ -137,5 +177,7 @@ Required dedicated test-site checks before Flutter buttons:
    administrator workflow retains standard behavior; do not add user roles.
 7. On an isolated test clone inject receipt-insert failure; confirm neither
    standard checkin nor receipt commits. This is not proven by a mocked test.
-8. Disable the gate after tests. GPS, face, approved devices, offline sync,
-   history, production policy and release hardening remain future phases.
+8. GPS/device requirements default off. Configure and exercise both optional
+   requirements in supervised tests, including revoked-device retry rejection.
+9. Disable the gate after tests. Face verification, offline sync, history,
+   production policy and release hardening remain future phases.
