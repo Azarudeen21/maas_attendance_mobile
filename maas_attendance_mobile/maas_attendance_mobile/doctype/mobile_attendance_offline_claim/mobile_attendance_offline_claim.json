@@ -13,7 +13,8 @@
     "reviewed_at",
     "review_reason",
     "request_hash",
-    "payload_json"
+    "payload_json",
+    "punch_photo"
   ],
   "doctype": "DocType",
   "sort_order": "ASC",
@@ -124,6 +125,13 @@
       "fieldname": "payload_json",
       "label": "Original Evidence",
       "fieldtype": "Long Text"
+    },
+    {
+      "read_only": 1,
+      "label": "Private Punch Photo",
+      "description": "Photo evidence only. No identity or liveness check.",
+      "fieldname": "punch_photo",
+      "fieldtype": "Attach Image"
     }
   ],
   "autoname": "field:request_id",

@@ -9,7 +9,8 @@
     "test_employee",
     "require_test_location",
     "require_approved_device",
-    "enable_offline_test"
+    "enable_offline_test",
+    "require_test_photo"
   ],
   "fields": [
     {
@@ -50,6 +51,13 @@
       "label": "Enable Offline Test Claims",
       "default": "0",
       "description": "Approved devices only. Upload within 24 hours; HR must review before a test checkin is created."
+    },
+    {
+      "label": "Require Punch Photo and GPS",
+      "description": "Record the time when the punch button is pressed, then take a photo and capture GPS. Photos are private evidence; no identity or liveness verification is performed.",
+      "fieldname": "require_test_photo",
+      "fieldtype": "Check",
+      "default": "0"
     }
   ],
   "permissions": [

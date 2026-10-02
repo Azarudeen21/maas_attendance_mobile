@@ -8,6 +8,10 @@ app_license = "Proprietary"
 required_apps = ["erpnext", "hrms"]
 
 doc_events = {
+    "File": {
+        "before_validate": "maas_attendance_mobile.photos.guard_file",
+        "on_trash": "maas_attendance_mobile.photos.guard_file",
+    },
     "Employee Checkin": {
         "before_insert": "maas_attendance_mobile.attendance.guard_checkin",
         "before_validate": "maas_attendance_mobile.attendance.guard_checkin",

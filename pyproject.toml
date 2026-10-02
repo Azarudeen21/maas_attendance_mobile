@@ -5,7 +5,7 @@ authors = [{name = "MAAS Consult"}]
 requires-python = ">=3.10"
 readme = "README.md"
 dynamic = ["version"]
-dependencies = []
+dependencies = ["Pillow>=10.0"]
 license = {file = "license.txt"}
 
 [build-system]

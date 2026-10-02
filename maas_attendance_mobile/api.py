@@ -81,6 +81,7 @@ def capabilities():
         "offline_submission_enabled": False,
         "offline_test_claims_supported": True,
         "face_verification_enabled": False,
+        "punch_photo_supported": True,
         "device_registration_enabled": True,
     }
 
@@ -92,10 +93,10 @@ def attendance_status():
 
 
 @frappe.whitelist(methods=["POST"])
-def punch(request_id, log_type, timestamp, device_id, app_version, location=None, device_secret=None):
+def punch(request_id, log_type, timestamp, device_id, app_version, location=None, device_secret=None, photo=None):
     """No employee, skip-attendance or face-verification input is accepted."""
     from maas_attendance_mobile.attendance import submit
-    return submit(_linked_employee(), request_id, log_type, timestamp, device_id, app_version, location=location, device_secret=device_secret)
+    return submit(_linked_employee(), request_id, log_type, timestamp, device_id, app_version, location=location, device_secret=device_secret, photo=photo)
 
 
 @frappe.whitelist(methods=["POST"])

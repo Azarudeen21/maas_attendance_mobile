@@ -48,6 +48,7 @@ def status(employee):
         "location_required": str(config.get("require_test_location", 0)) == "1",
         "approved_device_required": str(config.get("require_approved_device", 0)) == "1",
         "offline_test_submission_enabled": enabled(employee['name'], config),
+        "photo_required": str(config.get('require_test_photo', 0)) == '1',
     }
 
 
@@ -62,14 +63,18 @@ def _reply(receipt, duplicate):
     }
 
 
-def submit(employee, request_id, log_type, timestamp, device_id, app_version, location=None, device_secret=None):
+def submit(employee, request_id, log_type, timestamp, device_id, app_version, location=None, device_secret=None, photo=None):
+    photo_bytes = photo_at = None
     try:
         payload, event = parse_request(request_id, log_type, timestamp, device_id, app_version)
         if location is not None:
             from maas_attendance_mobile.geofence import parse_location
             location, sampled_at = parse_location(location)
             payload["location"] = location
-    except (ValueError, OverflowError):
+        if photo is not None:
+            from maas_attendance_mobile.photos import parse_photo
+            payload['photo'], photo_bytes, photo_at = parse_photo(photo)
+    except (ValueError, OverflowError, OSError, TypeError):
         frappe.throw("Invalid punch request. Use UUID v4 IDs, IN/OUT and an ISO timestamp with offset.", frappe.ValidationError)
 
     user = frappe.session.user
@@ -101,6 +106,13 @@ def submit(employee, request_id, log_type, timestamp, device_id, app_version, lo
     if frappe.db.exists('Mobile Attendance Offline Claim', request_id):
         frappe.throw('This request ID already belongs to an offline claim.', frappe.ValidationError)
 
+    if str(config.get('require_test_photo', 0)) == '1' and photo is None:
+        frappe.throw('A punch photo is required.', frappe.ValidationError)
+    if photo is not None:
+        from maas_attendance_mobile.photos import check_timing
+        try: check_timing(event, photo_at, location, sampled_at if location else None, datetime.now(timezone.utc))
+        except ValueError as error: frappe.throw(str(error), frappe.ValidationError)
+
     gps = None
     if str(config.get("require_test_location", 0)) == "1":
         if location is None:
@@ -113,7 +125,7 @@ def submit(employee, request_id, log_type, timestamp, device_id, app_version, lo
         workplaces = frappe.get_all("Mobile Attendance Workplace", filters={"company": company, "enabled": 1},
             fields=["name", "latitude", "longitude", "radius_m", "max_accuracy_m"])
         try:
-            gps = evaluate(location, sampled_at, workplaces, datetime.now(timezone.utc), event)
+            gps = evaluate(location, sampled_at, workplaces, sampled_at if photo_bytes else datetime.now(timezone.utc), photo_at or event)
         except ValueError as error:
             frappe.throw(str(error), frappe.ValidationError)
 
@@ -133,7 +145,7 @@ def submit(employee, request_id, log_type, timestamp, device_id, app_version, lo
             "doctype": "Employee Checkin", "employee": employee["name"],
             "time": local_time, "log_type": log_type,
             "device_id": "MAAS-TEST:" + device_id, "skip_auto_attendance": 1,
-            **({"latitude": location["latitude"], "longitude": location["longitude"]} if gps else {}),
+            **({"latitude": location["latitude"], "longitude": location["longitude"]} if gps or photo_bytes else {}),
         }).insert(ignore_permissions=True)
         receipt = frappe.get_doc({
             "doctype": RECEIPT, "request_id": request_id, "employee": employee["name"],
@@ -145,7 +157,12 @@ def submit(employee, request_id, log_type, timestamp, device_id, app_version, lo
             "distance_m": gps["distance_m"] if gps else None,
             "accuracy_m": gps["accuracy_m"] if gps else None,
             "registered_device": registered_device,
+            "photo_sha256": payload.get('photo', {}).get('sha256'),
+            "photo_captured_at": payload.get('photo', {}).get('captured_at'),
         }).insert(ignore_permissions=True)
+        if photo_bytes:
+            from maas_attendance_mobile.photos import save_private
+            save_private(RECEIPT, receipt.name, photo_bytes)
     finally:
         frappe.flags.maas_test_punch = previous
     # No commits here: checkin + UUID-primary-key receipt succeed or roll back

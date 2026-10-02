@@ -1,100 +1,159 @@
 {
- "doctype": "DocType",
- "name": "Mobile Attendance Transaction",
- "module": "MAAS Attendance Mobile",
- "engine": "InnoDB",
- "field_order": [
-  "request_id",
-  "employee",
-  "request_hash",
-  "checkin",
-  "log_type",
-  "event_time",
-  "timestamp_utc",
-  "device_id",
-  "app_version",
-  "test_mode",
-  "location_json", "workplace", "distance_m", "accuracy_m", "registered_device"
- ],
- "fields": [
-  {
-   "fieldname": "request_id",
-   "fieldtype": "Data",
-   "label": "Request UUID",
-   "reqd": 1,
-   "unique": 1
-  },
-  {
-   "fieldname": "employee",
-   "fieldtype": "Link",
-   "label": "Employee",
-   "options": "Employee",
-   "reqd": 1
-  },
-  {
-   "fieldname": "request_hash",
-   "fieldtype": "Data",
-   "label": "Request SHA256",
-   "reqd": 1
-  },
-  {
-   "fieldname": "checkin",
-   "fieldtype": "Link",
-   "label": "Employee Checkin",
-   "options": "Employee Checkin",
-   "reqd": 1
-  },
-  {
-   "fieldname": "log_type",
-   "fieldtype": "Select",
-   "label": "Log Type",
-   "options": "IN\nOUT",
-   "reqd": 1
-  },
-  {
-   "fieldname": "event_time",
-   "fieldtype": "Datetime",
-   "label": "Site Event Time",
-   "reqd": 1
-  },
-  {
-   "fieldname": "timestamp_utc",
-   "fieldtype": "Data",
-   "label": "Original Event UTC",
-   "reqd": 1
-  },
-  {
-   "fieldname": "device_id",
-   "fieldtype": "Data",
-   "label": "Installation UUID",
-   "reqd": 1
-  },
-  {
-   "fieldname": "app_version",
-   "fieldtype": "Data",
-   "label": "App Version",
-   "reqd": 1
-  },
-  {
-   "fieldname": "test_mode",
-   "fieldtype": "Check",
-   "label": "Test Mode",
-   "default": "1",
-   "read_only": 1
-  },
-  {"fieldname": "location_json", "fieldtype": "Small Text", "label": "Original GPS Payload", "read_only": 1},
-  {"fieldname": "workplace", "fieldtype": "Link", "options": "Mobile Attendance Workplace", "label": "Validated Workplace", "read_only": 1},
-  {"fieldname": "distance_m", "fieldtype": "Float", "precision": "3", "label": "Distance from Centre (metres)", "read_only": 1},
-  {"fieldname": "accuracy_m", "fieldtype": "Float", "precision": "3", "label": "GPS Uncertainty (metres)", "read_only": 1},
-  {"fieldname": "registered_device", "fieldtype": "Link", "options": "Mobile Attendance Device", "label": "Approved Device", "read_only": 1}
- ],
- "permissions": [
-  {
-   "role": "System Manager",
-   "read": 1
-  }
- ],
- "sort_field": "creation",
- "sort_order": "DESC",
- "autoname": "field:request_id"
+  "doctype": "DocType",
+  "name": "Mobile Attendance Transaction",
+  "module": "MAAS Attendance Mobile",
+  "engine": "InnoDB",
+  "field_order": [
+    "request_id",
+    "employee",
+    "request_hash",
+    "checkin",
+    "log_type",
+    "event_time",
+    "timestamp_utc",
+    "device_id",
+    "app_version",
+    "test_mode",
+    "location_json",
+    "workplace",
+    "distance_m",
+    "accuracy_m",
+    "registered_device",
+    "punch_photo",
+    "photo_sha256",
+    "photo_captured_at"
+  ],
+  "fields": [
+    {
+      "fieldname": "request_id",
+      "fieldtype": "Data",
+      "label": "Request UUID",
+      "reqd": 1,
+      "unique": 1
+    },
+    {
+      "fieldname": "employee",
+      "fieldtype": "Link",
+      "label": "Employee",
+      "options": "Employee",
+      "reqd": 1
+    },
+    {
+      "fieldname": "request_hash",
+      "fieldtype": "Data",
+      "label": "Request SHA256",
+      "reqd": 1
+    },
+    {
+      "fieldname": "checkin",
+      "fieldtype": "Link",
+      "label": "Employee Checkin",
+      "options": "Employee Checkin",
+      "reqd": 1
+    },
+    {
+      "fieldname": "log_type",
+      "fieldtype": "Select",
+      "label": "Log Type",
+      "options": "IN\nOUT",
+      "reqd": 1
+    },
+    {
+      "fieldname": "event_time",
+      "fieldtype": "Datetime",
+      "label": "Site Event Time",
+      "reqd": 1
+    },
+    {
+      "fieldname": "timestamp_utc",
+      "fieldtype": "Data",
+      "label": "Original Event UTC",
+      "reqd": 1
+    },
+    {
+      "fieldname": "device_id",
+      "fieldtype": "Data",
+      "label": "Installation UUID",
+      "reqd": 1
+    },
+    {
+      "fieldname": "app_version",
+      "fieldtype": "Data",
+      "label": "App Version",
+      "reqd": 1
+    },
+    {
+      "fieldname": "test_mode",
+      "fieldtype": "Check",
+      "label": "Test Mode",
+      "default": "1",
+      "read_only": 1
+    },
+    {
+      "fieldname": "location_json",
+      "fieldtype": "Small Text",
+      "label": "Original GPS Payload",
+      "read_only": 1
+    },
+    {
+      "fieldname": "workplace",
+      "fieldtype": "Link",
+      "options": "Mobile Attendance Workplace",
+      "label": "Validated Workplace",
+      "read_only": 1
+    },
+    {
+      "fieldname": "distance_m",
+      "fieldtype": "Float",
+      "precision": "3",
+      "label": "Distance from Centre (metres)",
+      "read_only": 1
+    },
+    {
+      "fieldname": "accuracy_m",
+      "fieldtype": "Float",
+      "precision": "3",
+      "label": "GPS Uncertainty (metres)",
+      "read_only": 1
+    },
+    {
+      "fieldname": "registered_device",
+      "fieldtype": "Link",
+      "options": "Mobile Attendance Device",
+      "label": "Approved Device",
+      "read_only": 1
+    },
+    {
+      "read_only": 1,
+      "label": "Private Punch Photo",
+      "description": "Photo evidence only. No identity or liveness check.",
+      "fieldname": "punch_photo",
+      "fieldtype": "Attach Image"
+    },
+    {
+      "read_only": 1,
+      "label": "Original Photo SHA256",
+      "fieldname": "photo_sha256",
+      "fieldtype": "Data"
+    },
+    {
+      "read_only": 1,
+      "label": "Photo Captured UTC",
+      "fieldname": "photo_captured_at",
+      "fieldtype": "Data"
+    }
+  ],
+  "permissions": [
+    {
+      "role": "System Manager",
+      "read": 1
+    },
+    {
+      "role": "HR Manager",
+      "read": 1
+    }
+  ],
+  "sort_field": "creation",
+  "sort_order": "DESC",
+  "autoname": "field:request_id"
 }

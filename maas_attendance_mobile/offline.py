@@ -17,10 +17,10 @@ def enabled(employee, config):
 
 def parse_claim(request):
     if isinstance(request, str):
-        if len(request) > 5000: raise ValueError('Offline request too large.')
+        if len(request) > 3 * 1024 * 1024: raise ValueError('Offline request too large.')
         request = json.loads(request)
     required = {'request_id', 'log_type', 'timestamp', 'device_id', 'app_version', 'base_checkin', 'previous_request_id'}
-    if not isinstance(request, dict) or not required <= set(request) or set(request) - required - {'location'}:
+    if not isinstance(request, dict) or not required <= set(request) or set(request) - required - {'location', 'photo'}:
         raise ValueError('Invalid offline request fields.')
     payload, event = parse_request(*(request[key] for key in ('request_id', 'log_type', 'timestamp', 'device_id', 'app_version')))
     base = request['base_checkin']
@@ -33,7 +33,11 @@ def parse_claim(request):
     payload.update(base_checkin=base, previous_request_id=previous)
     if 'location' in request:
         payload['location'], _ = parse_location(request['location'])
-    return payload, event
+    photo_bytes = None
+    if 'photo' in request:
+        from maas_attendance_mobile.photos import parse_photo
+        payload['photo'], photo_bytes, _ = parse_photo(request['photo'])
+    return payload, event, photo_bytes
 
 
 def check_window(event, now):
@@ -70,13 +74,14 @@ def gps_check(payload, event, company, config):
     workplaces = frappe.get_all('Mobile Attendance Workplace', filters={'company': company, 'enabled': 1},
         fields=['name', 'latitude', 'longitude', 'radius_m', 'max_accuracy_m'])
     # Delayed evidence is compared to the ORIGINAL event, never re-captured at sync.
-    try: return evaluate(location, sampled, workplaces, event, event)
+    anchor = datetime.fromisoformat(payload['photo']['captured_at'].replace('Z', '+00:00')) if payload.get('photo') else event
+    try: return evaluate(location, sampled, workplaces, sampled if payload.get('photo') else event, anchor)
     except ValueError as error: frappe.throw(str(error), frappe.ValidationError)
 
 
 def submit(employee, request, device_secret):
-    try: payload, event = parse_claim(request)
-    except (ValueError, TypeError, OverflowError): frappe.throw('Invalid offline claim.', frappe.ValidationError)
+    try: payload, event, photo_bytes = parse_claim(request)
+    except (ValueError, TypeError, OverflowError, OSError): frappe.throw('Invalid offline claim.', frappe.ValidationError)
     user = frappe.session.user
     current = lock_employee(employee['name'], user)
     config = attendance.settings()
@@ -93,6 +98,15 @@ def submit(employee, request, device_secret):
         frappe.throw('Request ID already used for an online punch.', frappe.ValidationError)
     try: check_window(event, datetime.now(timezone.utc))
     except ValueError as error: frappe.throw(str(error), frappe.ValidationError)
+    if str(config.get('require_test_photo', 0)) == '1' and not photo_bytes:
+        frappe.throw('A photo is required for offline test punches.', frappe.ValidationError)
+    if photo_bytes:
+        from maas_attendance_mobile.photos import check_timing
+        captured = datetime.fromisoformat(payload['photo']['captured_at'].replace('Z', '+00:00'))
+        try:
+            location, sampled = parse_location(payload.get('location'))
+            check_timing(event, captured, location, sampled, datetime.now(timezone.utc), offline=True)
+        except ValueError as error: frappe.throw(str(error), frappe.ValidationError)
     gps_check(payload, event, current['company'], config)
     # Bound each employee's review backlog; exact retries do not consume slots.
     if len(frappe.get_all(CLAIM, filters={'employee': employee['name'], 'status': 'Pending Review'}, fields=['name'], limit_page_length=100)) >= 100:
@@ -104,7 +118,11 @@ def submit(employee, request, device_secret):
         'status': 'Pending Review', 'checkin': None}
     previous = frappe.flags.get('maas_offline_write')
     frappe.flags.maas_offline_write = payload['request_id']
-    try: doc = frappe.get_doc(values).insert(ignore_permissions=True)
+    try:
+        doc = frappe.get_doc(values).insert(ignore_permissions=True)
+        if photo_bytes:
+            from maas_attendance_mobile.photos import save_private
+            save_private(CLAIM, doc.name, photo_bytes)
     finally: frappe.flags.maas_offline_write = previous
     return reply(doc.as_dict())
 
@@ -132,6 +150,8 @@ def review(request_id, decision, reason):
         return reply(doc.as_dict(), True)
     if decision == 'Approved':
         config = attendance.settings()
+        if str(config.get('require_test_photo', 0)) == '1' and not doc.get('punch_photo'):
+            frappe.throw('Photo evidence is missing. Reject and arrange a manual correction.', frappe.ValidationError)
         if not current or current['user_id'] != doc.user or current['status'] != 'Active' or not frappe.db.get_value('User', doc.user, 'enabled') or 'Employee' not in frappe.get_roles(doc.user) or not enabled(doc.employee, config):
             frappe.throw('The test policy or employee eligibility changed. Reject or review with HR.', frappe.PermissionError)
         device = frappe.db.get_value(DEVICE, doc.registered_device, ['status', 'employee', 'user'], as_dict=True, for_update=True)

@@ -1,6 +1,7 @@
 # MAAS Attendance Mobile — Frappe app
 
-Version 0.6.0 adds offline test claims with explicit HR review, alongside
+Version 0.7.0 adds private punch photos with GPS and the original button time,
+without face recognition or liveness. It also includes offline test claims with explicit HR review, alongside
 employee check-in history, device approval and server GPS workplace checks.
 Authentication, profile and basic online test punches were
 verified on the v16 test site. This release requires migration and live GPS
@@ -11,8 +12,8 @@ policy validation. It is not a complete production attendance app.
 Keep pyproject.toml and the maas_attendance_mobile package at repository root.
 Frappe, ERPNext and HRMS must already be installed. Bench metadata allows
 v15/v16; v15 live installation and compatibility remain unverified.
-No new Python dependency is required. The Flutter app uses geolocator for
-foreground GPS capture.
+Pillow is required for JPEG pixel validation and metadata removal. The Flutter
+app uses camera for foreground photos and geolocator for foreground GPS capture.
 
 For an existing installation deploy the new revision and migrate the test site
 through Frappe Cloud; do not uninstall/reinstall. Migration adds Mobile
@@ -37,6 +38,38 @@ sessions both use the server session identity. Paths below are prefixed by
 - POST submit_offline_claim: immutable delayed claim from an approved device.
 - GET offline_claim_status: own request UUID's review state, without evidence.
 - POST review_offline_claim: HR Manager/System Manager approves or rejects with a reason.
+
+## Punch photo and GPS evidence (v0.7.0)
+
+Require Punch Photo and GPS defaults off in Mobile Attendance Settings. When
+enabled, both IN and OUT record the button time, open the front camera, let
+the user take and accept one photo, and then capture precise GPS. Cancelling
+or failing capture creates no new punch. No face matching or liveness runs.
+
+The photo argument contains image_base64 (JPEG, maximum 2 MiB) and captured_at
+(offset-bearing timestamp). Capture must occur within two minutes of button
+time, and GPS must accompany the photo within 30 seconds. Online submission
+uses the existing 15-minute original-event window, allowing unchanged photo/GPS
+retries after connection failures. GPS-only punches retain the 30-second fresh
+sample rule. Workplace checks still apply when configured.
+
+The server decodes actual JPEG pixels, limits dimensions, strips EXIF metadata
+and stores a resized JPEG as a private File attached to punch_photo on Mobile
+Attendance Transaction, or Mobile Attendance Offline Claim for delayed claims.
+HR Manager/System Manager can view those audit records. The transaction links
+the standard Employee Checkin. Photo bytes are excluded from audit JSON, API
+receipts and employee history; original-image hash and capture time are retained.
+Normal file editing, public conversion, detachment and deletion are blocked.
+
+The native app saves unresolved online photo requests and offline photos in
+secure storage for exact retries. Photo-required offline queues are limited to
+five events (otherwise twenty); raw queued photos are removed after a verified
+server receipt or a permitted discard. Offline upload still creates a pending
+HR claim, never automatic attendance. Device secrets remain separate.
+
+Real camera permission/lifecycle tests, private file access, rollback behavior,
+retention policy and Cloud migration remain deployment checkpoints. All current
+punches skip auto attendance. Face enrollment, matching and liveness are deferred.
 
 ## Offline test claims (v0.6.0)
 
@@ -236,7 +269,7 @@ These tests mock Frappe and verify pure rules/service contracts. They do not
 prove database rollback, locks, hook dispatch, OAuth middleware or installation.
 Live test-site checks for this revision:
 
-1. Gate disabled: app_version 0.6.0, test flag false, status readable only by
+1. Gate disabled: app_version 0.7.0, test flag false, status readable only by
    authenticated linked employee. Guests reject without employee details.
 2. Enable only Mobile Test. Fresh IN creates one standard checkin + receipt,
    correct employee/local time and Skip Auto Attendance checked.
