@@ -7,6 +7,12 @@ import frappe
 from maas_attendance_mobile import __version__
 
 
+@frappe.whitelist(allow_guest=True, methods=['GET'])
+def mobile_setup():
+    from maas_attendance_mobile.site_setup import discovery
+    return discovery()
+
+
 def _linked_employee():
     user = frappe.session.user
     if not user or user == "Guest":

@@ -4,6 +4,15 @@ from frappe.model.document import Document
 
 class MobileAttendanceSettings(Document):
     def validate(self):
+        if self.get('enable_mobile_site_setup') in (1, '1', True):
+            if not self.get('mobile_oauth_client'):
+                frappe.throw('Select the public OAuth client for mobile site setup.')
+            from maas_attendance_mobile.site_setup import validate_client
+            validate_client(self.get('mobile_oauth_client'))
+            label = (self.get('mobile_site_label') or '').strip()
+            if not label or len(label) > 100:
+                frappe.throw('Enter a mobile site label of at most 100 characters.')
+            self.set('mobile_site_label', label)
         online = self.get('enable_test_attendance') in (1, '1', True)
         if self.get('enable_offline_test') in (1, '1', True) and not online:
             frappe.throw('Enable the online test policy before enabling offline claims.')

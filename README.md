@@ -1,6 +1,7 @@
 # MAAS Attendance Mobile — Frappe app
 
-Version 0.8.0 adds an HR control screen and stronger settings validation.
+Version 0.9.0 adds customer-site mobile onboarding with public PKCE setup.
+Version 0.8.0 added an HR control screen and stronger settings validation.
 Version 0.7.0 added private punch photos with GPS and the original button time,
 without face recognition or liveness. It also includes offline test claims with explicit HR review, alongside
 employee check-in history, device approval and server GPS workplace checks.
@@ -40,6 +41,37 @@ sessions both use the server session identity. Paths below are prefixed by
 - GET offline_claim_status: own request UUID's review state, without evidence.
 - POST review_offline_claim: HR Manager/System Manager approves or rejects with a reason.
 - GET hr_overview: permission-scoped counts and policy for HR/System Managers.
+- GET mobile_setup: opt-in guest-readable public client ID/label only.
+
+## Customer site connections (v0.9.0)
+
+Install this package separately on each supported ERPNext/HRMS site. As System
+Manager configure an OAuth Client: Authorization Code grant, Code response,
+Token Endpoint Auth Method None (public PKCE), scope all, and both default and
+allowed redirect URI com.maasconsult.attendance:/oauth2redirect. No mobile client
+secret is used. In Mobile Attendance Settings select Mobile Public OAuth Client,
+set Site Display Name and enable Mobile Site Connection. This opt-in metadata
+endpoint does not enable attendance or expose employee/company lists, passwords,
+client secrets, photos or alternate OAuth endpoints.
+
+Employees enter the company's HTTPS root address and confirm the displayed site
+before signing in. The app derives OAuth/API endpoints from that chosen origin;
+API redirects are disabled. It does not trust an origin supplied by discovery.
+Selected connection is persisted. Switch site from the signed-out screen; the
+old signed-in widget and its foreground sync are disposed. Queues remain with
+their original site and employee and are not transferred to the new site.
+
+OAuth sessions are keyed by origin/client ID (one active account per connection).
+Pending punches, device credentials and offline queues are keyed by origin and
+verified account; installation audit IDs are keyed by origin. Existing test-site
+data migrates only for the exact original test origin/client, with a verified
+scoped copy before deleting the old key. Credentials are never relayed centrally.
+The MAAS test shortcut appears only in debug builds.
+
+This stage configures site connections, not production company policy. The test
+lane still allows only the selected dedicated test employee and skips auto
+attendance. Per-company production policies, customer deployment verification,
+iOS/native secure-store migration and background uploads remain later checkpoints.
 
 ## HR attendance controls (v0.8.0)
 
@@ -294,7 +326,7 @@ These tests mock Frappe and verify pure rules/service contracts. They do not
 prove database rollback, locks, hook dispatch, OAuth middleware or installation.
 Live test-site checks for this revision:
 
-1. Gate disabled: app_version 0.8.0, test flag false, status readable only by
+1. Gate disabled: app_version 0.9.0, test flag false, status readable only by
    authenticated linked employee. Guests reject without employee details.
 2. Enable only Mobile Test. Fresh IN creates one standard checkin + receipt,
    correct employee/local time and Skip Auto Attendance checked.

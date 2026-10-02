@@ -13,7 +13,11 @@
     "require_test_location",
     "require_approved_device",
     "offline_section",
-    "enable_offline_test"
+    "enable_offline_test",
+    "site_setup_section",
+    "enable_mobile_site_setup",
+    "mobile_site_label",
+    "mobile_oauth_client"
   ],
   "fields": [
     {
@@ -76,6 +80,30 @@
       "fieldname": "offline_section",
       "fieldtype": "Section Break",
       "label": "Offline review"
+    },
+    {
+      "fieldname": "site_setup_section",
+      "fieldtype": "Section Break",
+      "label": "Mobile site connection"
+    },
+    {
+      "fieldname": "enable_mobile_site_setup",
+      "fieldtype": "Check",
+      "label": "Enable Mobile Site Connection",
+      "default": "0",
+      "description": "Publish only the public client ID and site label for employee onboarding. This does not enable attendance."
+    },
+    {
+      "fieldname": "mobile_site_label",
+      "fieldtype": "Data",
+      "label": "Site Display Name"
+    },
+    {
+      "fieldname": "mobile_oauth_client",
+      "fieldtype": "Link",
+      "options": "OAuth Client",
+      "label": "Mobile Public OAuth Client",
+      "description": "Authorization Code, Code response, Token Endpoint Auth Method None, all scope, MAAS redirect URI."
     }
   ],
   "permissions": [
