@@ -107,3 +107,9 @@ def register_device(device_id, device_secret, device_label):
 def device_status(device_id, device_secret):
     from maas_attendance_mobile.devices import record, reply
     return reply(record(_linked_employee(), device_id, device_secret))
+
+
+@frappe.whitelist(methods=["GET"])
+def attendance_history(cursor=None):
+    from maas_attendance_mobile.history import page
+    return page(_linked_employee(), cursor)

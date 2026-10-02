@@ -1,7 +1,7 @@
 # MAAS Attendance Mobile — Frappe app
 
-Version 0.4.0 adds device registration, HR approval/revocation, and optional
-approved-device enforcement alongside server GPS workplace checks.
+Version 0.5.0 adds employee check-in history with pagination, alongside device
+approval/revocation and optional server GPS workplace checks.
 Authentication, profile and basic online test punches were
 verified on the v16 test site. This release requires migration and live GPS
 policy validation. It is not a complete production attendance app.
@@ -30,9 +30,30 @@ sessions both use the server session identity. Paths below are prefixed by
 - GET profile: active employee linked to current enabled Employee-role login.
 - GET capabilities: actual host schema/version and capability flags.
 - GET attendance_status: current employee's latest checkin and test gate.
+- GET attendance_history: current employee's check-in records, 20 per page.
 - POST punch: allowlisted online test IN/OUT only.
 - POST register_device: register the current employee's installation as Pending.
 - POST device_status: verify credentials and return approval status.
+
+## Employee check-in history (v0.5.0)
+
+attendance_history accepts only an optional opaque cursor. The API resolves the
+active employee from the current enabled login and Employee role, then explicitly
+scopes every database query to that employee. Employees cannot choose another
+employee or submit free-form filters. This is a deliberate self-service read;
+the Employee identity lookup still enforces normal Employee read permissions.
+
+Responses contain api_version, user, timezone, records and next_cursor. Each
+record contains name, time, log_type and skip_auto_attendance (null on a schema
+without that field). GPS, installation credentials and transaction payloads
+are excluded. Records use site time and descending time/name ordering. Pass
+next_cursor unchanged to load older records; null means there are no more.
+Refresh starts a new listing. HR edits to old timestamps may change pagination.
+
+This lists Employee Checkin records, including test punches and other sources.
+It does not report finalized Attendance, worked hours, leave or payroll status.
+It creates no records and works while the online test submission gate is off.
+Live database queries and OAuth permission checks remain deployment checkpoints.
 
 Punch accepts request_id (canonical UUID v4), log_type (IN or OUT), timestamp
 (ISO 8601 with timezone offset), device_id (installation UUID v4), app_version
