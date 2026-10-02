@@ -11,7 +11,10 @@
     "require_test_photo",
     "require_test_location",
     "require_approved_device",
-    "enable_offline_test"
+    "enable_offline_test",
+    "photo_retention_section",
+    "photo_retention_days",
+    "enable_photo_cleanup"
   ],
   "fields": [
     {
@@ -59,6 +62,25 @@
       "fieldname": "enable_offline_test",
       "fieldtype": "Check",
       "label": "Enable Offline Test Claims",
+      "default": "0"
+    },
+    {
+      "fieldtype": "Section Break",
+      "label": "Photo Retention",
+      "fieldname": "photo_retention_section"
+    },
+    {
+      "fieldtype": "Int",
+      "description": "Zero keeps photos. Count from upload; offline photos also remain for this interval after final HR review. Holds override cleanup.",
+      "label": "Keep Photo for Days",
+      "fieldname": "photo_retention_days",
+      "default": "0"
+    },
+    {
+      "fieldtype": "Check",
+      "description": "Opt-in hourly cleanup. Retains punch records and evidence hashes. Does not remove backups or shared files.",
+      "label": "Enable Automatic Photo Cleanup",
+      "fieldname": "enable_photo_cleanup",
       "default": "0"
     }
   ],

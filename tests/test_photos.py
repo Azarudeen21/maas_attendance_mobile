@@ -24,9 +24,13 @@ class PhotoRulesTests(unittest.TestCase):
         self.context = test_api.ApiTests(); self.context.setUp()
         import maas_attendance_mobile.photos
         self.photos = importlib.reload(maas_attendance_mobile.photos)
+        self.guard_patch = patch.object(self.photos, 'require_file_guard')
+        self.guard_patch.start()
         self.now = datetime.now(timezone.utc)
 
-    def tearDown(self): self.context.tearDown()
+    def tearDown(self):
+        self.guard_patch.stop()
+        self.context.tearDown()
 
     def test_jpeg_pixels_validated_and_stored_copy_strips_metadata(self):
         metadata, content, captured = self.photos.parse_photo(image_payload(self.now))
@@ -72,6 +76,8 @@ class PhotoRulesTests(unittest.TestCase):
     def test_storage_is_private_attached_and_restores_service_context(self):
         self.context.frappe.flags = test_attendance.Flags()
         self.context.frappe.db.set_value = Mock()
+        utils = types.ModuleType('frappe.utils')
+        utils.now_datetime = lambda: '2026-10-02 12:00:00'
         manager = types.ModuleType('frappe.utils.file_manager')
         def save(*args, **kwargs):
             self.assertEqual(kwargs, {'is_private': 1, 'df': 'punch_photo'})
@@ -79,10 +85,12 @@ class PhotoRulesTests(unittest.TestCase):
             self.assertEqual(self.context.frappe.flags.get('maas_photo_write'), {'doctype': 'Mobile Attendance Transaction', 'name': 'ID'})
             return types.SimpleNamespace(is_private=1, file_url='/private/files/photo.jpg')
         manager.save_file = Mock(side_effect=save)
-        with patch.dict(sys.modules, {'frappe.utils.file_manager': manager}):
+        with patch.dict(sys.modules, {'frappe.utils.file_manager': manager, 'frappe.utils': utils}):
             self.assertEqual(self.photos.save_private('Mobile Attendance Transaction', 'ID', b'JPEG'), '/private/files/photo.jpg')
         self.assertIsNone(self.context.frappe.flags.get('maas_photo_write'))
-        self.context.frappe.db.set_value.assert_called_once_with('Mobile Attendance Transaction', 'ID', 'punch_photo', '/private/files/photo.jpg', update_modified=False)
+        self.context.frappe.db.set_value.assert_any_call('Mobile Attendance Transaction', 'ID', 'punch_photo', '/private/files/photo.jpg', update_modified=False)
+        self.context.frappe.db.set_value.assert_any_call('Mobile Attendance Transaction', 'ID',
+            {'photo_company': 1, 'photo_uploaded_at': '2026-10-02 12:00:00'}, update_modified=False)
 
     def test_public_storage_result_rejected_before_audit_attachment(self):
         self.context.frappe.flags = test_attendance.Flags()

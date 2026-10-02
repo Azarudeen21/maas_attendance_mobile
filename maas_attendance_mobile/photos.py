@@ -12,6 +12,13 @@ PHOTO_FIELD = 'punch_photo'
 AUDIT_TYPES = ('Mobile Attendance Transaction', 'Mobile Attendance Offline Claim')
 
 
+def require_file_guard():
+    from frappe.model.base_document import get_controller
+    from maas_attendance_mobile.protected_file import AttendanceProtectedFile
+    if not issubclass(get_controller('File'), AttendanceProtectedFile):
+        frappe.throw('Another app overrides File storage. Configure compatible MAAS photo protection before using punch photos.', frappe.ValidationError)
+
+
 def parse_photo(value):
     if isinstance(value, str):
         if len(value) > 3 * 1024 * 1024: raise ValueError('Photo is too large.')
@@ -58,6 +65,7 @@ def check_timing(event, captured, location, sampled_at, now, *, offline=False):
 
 
 def save_private(doctype, name, content):
+    require_file_guard()
     from frappe.utils.file_manager import save_file
     previous = frappe.flags.get('maas_photo_write')
     frappe.flags.maas_photo_write = {'doctype': doctype, 'name': name}
@@ -66,6 +74,12 @@ def save_private(doctype, name, content):
         if not file.is_private or not file.file_url.startswith('/private/files/'):
             frappe.throw('Photo storage must remain private.', frappe.PermissionError)
         frappe.db.set_value(doctype, name, PHOTO_FIELD, file.file_url, update_modified=False)
+        from frappe.utils import now_datetime
+        employee = frappe.db.get_value(doctype, name, 'employee')
+        company = frappe.db.get_value('Employee', employee, 'company')
+        frappe.db.set_value(doctype, name, {
+            'photo_company': company, 'photo_uploaded_at': now_datetime(),
+        }, update_modified=False)
         return file.file_url
     finally:
         frappe.flags.maas_photo_write = previous
@@ -77,6 +91,12 @@ def guard_file(doc, method=None):
     if old: references.append((old.get('attached_to_doctype'), old.get('attached_to_name')))
     for doctype, name in references:
         if doctype not in AUDIT_TYPES: continue
+        deletion = frappe.flags.get('maas_photo_delete')
+        if (method == 'on_trash' and deletion == {'doctype': doctype, 'name': name,
+            'file': doc.get('name'), 'url': doc.get('file_url')}
+            and doc.get('is_private') in (1, '1', True)
+            and doc.get('attached_to_field') == PHOTO_FIELD):
+            continue
         context = frappe.flags.get('maas_photo_write')
         if method == 'on_trash' or context != {'doctype': doctype, 'name': name} or not doc.get('is_private'):
             frappe.throw('Punch evidence files are managed by the attendance service.', frappe.PermissionError)

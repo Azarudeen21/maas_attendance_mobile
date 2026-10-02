@@ -1,0 +1,83 @@
+{
+  "field_order": [
+    "company",
+    "source_doctype",
+    "source_name",
+    "photo_url",
+    "status",
+    "completed_at",
+    "last_attempt_at"
+  ],
+  "module": "MAAS Attendance Mobile",
+  "permissions": [
+    {
+      "role": "System Manager",
+      "read": 1
+    },
+    {
+      "role": "HR Manager",
+      "read": 1
+    }
+  ],
+  "autoname": "prompt",
+  "engine": "InnoDB",
+  "sort_field": "creation",
+  "doctype": "DocType",
+  "name": "Mobile Attendance Photo Cleanup",
+  "fields": [
+    {
+      "fieldname": "company",
+      "label": "Company",
+      "read_only": 1,
+      "reqd": 1,
+      "fieldtype": "Link",
+      "options": "Company"
+    },
+    {
+      "fieldname": "source_doctype",
+      "label": "Source Type",
+      "read_only": 1,
+      "reqd": 1,
+      "fieldtype": "Link",
+      "options": "DocType"
+    },
+    {
+      "fieldname": "source_name",
+      "label": "Source Record",
+      "read_only": 1,
+      "reqd": 1,
+      "fieldtype": "Dynamic Link",
+      "options": "source_doctype"
+    },
+    {
+      "fieldtype": "Data",
+      "read_only": 1,
+      "label": "Original Private Photo URL",
+      "fieldname": "photo_url",
+      "reqd": 1
+    },
+    {
+      "default": "Pending",
+      "fieldname": "status",
+      "label": "Status",
+      "options": "Pending\nCompleted",
+      "read_only": 1,
+      "reqd": 1,
+      "fieldtype": "Select",
+      "in_list_view": 1
+    },
+    {
+      "fieldtype": "Datetime",
+      "read_only": 1,
+      "label": "Completed At",
+      "fieldname": "completed_at"
+    },
+    {
+      "fieldtype": "Datetime",
+      "read_only": 1,
+      "label": "Last Attempt At",
+      "fieldname": "last_attempt_at"
+    }
+  ],
+  "sort_order": "DESC"
+}

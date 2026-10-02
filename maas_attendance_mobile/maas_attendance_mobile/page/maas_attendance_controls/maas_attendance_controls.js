@@ -44,6 +44,8 @@ frappe.pages['maas-attendance-controls'].on_page_load = function(wrapper) {
       button(body, 'All offline claims', () => route('Mobile Attendance Offline Claim'));
       button(body, 'Manage workplaces', () => route('Mobile Attendance Workplace'));
       button(body, 'Company test policies', () => route('Mobile Attendance Company Policy'));
+      button(body, 'Photo cleanup audits', () => route('Mobile Attendance Photo Cleanup'));
+      $('<p class="text-muted mt-3"></p>').text(__('Photo cleanup is disabled by default. Open a company policy to set retention and preview eligible photos. Open a receipt or offline claim to keep its photo on hold. Pending offline claims are protected until final HR review.')).appendTo(body);
       $('<p class="text-muted mt-3"></p>').text(__('Open a device to approve or revoke it. Open an offline claim to inspect its photo and GPS, then approve or reject with a reason. Another HR reviewer must review their own device or claim. Counts follow your record access permissions.')).appendTo(body);
     } catch (_) {
       if (request !== generation) return;

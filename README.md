@@ -326,7 +326,7 @@ These tests mock Frappe and verify pure rules/service contracts. They do not
 prove database rollback, locks, hook dispatch, OAuth middleware or installation.
 Live test-site checks for this revision:
 
-1. Gate disabled: app_version 0.10.0, test flag false, status readable only by
+1. Gate disabled: app_version 0.11.0, test flag false, status readable only by
    authenticated linked employee. Guests reject without employee details.
 2. Enable only Mobile Test. Fresh IN creates one standard checkin + receipt,
    correct employee/local time and Skip Auto Attendance checked.
@@ -356,3 +356,22 @@ Company rules can strengthen them. HR Manager reads policy records; System
 Manager edits them. These remain test policies: all punches skip automatic
 attendance and offline claims require HR review. Migrate an isolated test site
 before enabling this mode. Production eligibility remains a future stage.
+
+## Photo retention (v0.11.0)
+
+Company policies now expose retention days (0 keeps photos) and automatic
+cleanup (OFF by default). HR can preview counts and hold an individual receipt
+or offline photo with a reason. Offline photos remain protected while awaiting
+review and for a full retention interval after final review. New photo records
+snapshot company/upload time; legacy photos without these values remain kept.
+The hourly scheduler first processes previously committed cleanup audit intents,
+then plans new intents. It preserves punch/GPS/hash/review records, checks current
+policy and holds under lock, skips shared or unknown files, and retries failed
+intents. Backups/exports are outside this managed-photo cleanup.
+
+The File controller subclass guards physical deletion and overwrite before
+Frappe storage operations, including photo optimization. Other app File overrides
+must retain MAAS protection; new photo storage and cleanup reject incompatible
+controllers. Verify controller compatibility, real database locks, storage
+failure recovery and scheduler execution on an isolated clone before enabling
+cleanup. No production attendance gates are introduced by this revision.

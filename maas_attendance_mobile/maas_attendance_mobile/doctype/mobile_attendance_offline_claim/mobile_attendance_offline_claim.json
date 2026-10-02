@@ -14,7 +14,15 @@
     "review_reason",
     "request_hash",
     "payload_json",
-    "punch_photo"
+    "punch_photo",
+    "photo_company",
+    "photo_uploaded_at",
+    "photo_retention_hold",
+    "photo_hold_reason",
+    "photo_hold_by",
+    "photo_hold_at",
+    "photo_removed_at",
+    "photo_cleanup"
   ],
   "doctype": "DocType",
   "sort_order": "ASC",
@@ -132,6 +140,58 @@
       "description": "Photo evidence only. No identity or liveness check.",
       "fieldname": "punch_photo",
       "fieldtype": "Attach Image"
+    },
+    {
+      "fieldtype": "Link",
+      "read_only": 1,
+      "options": "Company",
+      "label": "Photo Company at Upload",
+      "fieldname": "photo_company"
+    },
+    {
+      "fieldtype": "Datetime",
+      "read_only": 1,
+      "label": "Photo Uploaded At",
+      "fieldname": "photo_uploaded_at"
+    },
+    {
+      "fieldtype": "Check",
+      "read_only": 1,
+      "label": "Keep Photo on Hold",
+      "fieldname": "photo_retention_hold",
+      "default": "0"
+    },
+    {
+      "fieldtype": "Small Text",
+      "read_only": 1,
+      "label": "Photo Hold Reason",
+      "fieldname": "photo_hold_reason"
+    },
+    {
+      "fieldtype": "Link",
+      "read_only": 1,
+      "options": "User",
+      "label": "Hold Changed By",
+      "fieldname": "photo_hold_by"
+    },
+    {
+      "fieldtype": "Datetime",
+      "read_only": 1,
+      "label": "Hold Changed At",
+      "fieldname": "photo_hold_at"
+    },
+    {
+      "fieldtype": "Datetime",
+      "read_only": 1,
+      "label": "Photo Removed At",
+      "fieldname": "photo_removed_at"
+    },
+    {
+      "fieldtype": "Link",
+      "read_only": 1,
+      "options": "Mobile Attendance Photo Cleanup",
+      "label": "Photo Cleanup Audit",
+      "fieldname": "photo_cleanup"
     }
   ],
   "autoname": "field:request_id",

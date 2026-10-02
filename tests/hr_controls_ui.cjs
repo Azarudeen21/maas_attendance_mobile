@@ -74,3 +74,35 @@ test('device review hides self/revoked devices and saves eligible approval', asy
   await new Promise(resolve => setImmediate(resolve));
   assert.equal(values[0], 'status'); assert.equal(values[1], 'Approved'); assert.equal(saves, 1);
 });
+
+test('photo hold uses scoped API, reason prompt and reload, without saving evidence', async () => {
+  const h = harness('../public/js/photo_retention.js');
+  let args, reloads = 0;
+  h.frappe.prompt = (_fields, action) => action({reason: 'Keep for review'});
+  h.frappe.call = async request => {args = request; return {message: {hold: true}};};
+  h.frappe.msgprint = () => assert.fail('Unexpected hold error');
+  const frm = {is_new: () => false, doc: {name: 'ID', punch_photo: '/private/files/photo.jpg'},
+    add_custom_button: (label, callback) => h.buttons.push({label, callback}), reload_doc: async () => reloads++};
+  h.handlers['Mobile Attendance Transaction'].refresh(frm);
+  h.buttons[0].callback(); await new Promise(resolve => setImmediate(resolve));
+  assert.equal(args.method, 'maas_attendance_mobile.api.photo_retention_hold');
+  assert.equal(args.type, 'POST'); assert.equal(args.args.hold, 1);
+  assert.equal(args.args.name, 'ID'); assert.equal(args.args.reason, 'Keep for review');
+  assert.equal(reloads, 1);
+  h.buttons.length = 0; frm.doc.photo_removed_at = '2026-10-02';
+  h.handlers['Mobile Attendance Transaction'].refresh(frm); assert.equal(h.buttons.length, 0);
+});
+
+test('photo retention preview shows counts and does not enable cleanup', async () => {
+  const h = harness('doctype/mobile_attendance_company_policy/mobile_attendance_company_policy.js');
+  let request, message;
+  h.frappe.call = async value => {request = value; return {message: {api_version: 1, company: 'A',
+    automatic_cleanup_enabled: false, counts: {eligible: 2, held: 1, awaiting_review: 3, kept: 4}}};};
+  h.frappe.msgprint = value => message = value;
+  const frm = {is_new: () => false, doc: {company: 'A'}, add_custom_button: (label, callback) => h.buttons.push({label, callback})};
+  h.handlers['Mobile Attendance Company Policy'].refresh(frm);
+  await h.buttons[0].callback();
+  assert.equal(request.type, 'GET'); assert.equal(request.args.company, 'A');
+  assert.ok(message.message.includes('Eligible photos: 2'));
+  assert.ok(message.message.includes('Automatic cleanup is disabled.'));
+});

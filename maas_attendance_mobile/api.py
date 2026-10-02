@@ -145,3 +145,15 @@ def review_offline_claim(request_id, decision, reason):
 def hr_overview():
     from maas_attendance_mobile.hr_controls import overview
     return overview()
+
+
+@frappe.whitelist(methods=['GET'])
+def photo_retention_preview(company):
+    from maas_attendance_mobile.photo_retention import preview
+    return preview(company)
+
+
+@frappe.whitelist(methods=['POST'])
+def photo_retention_hold(doctype, name, hold, reason):
+    from maas_attendance_mobile.photo_retention import set_hold
+    return set_hold(doctype, name, hold, reason)
