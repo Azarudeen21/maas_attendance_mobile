@@ -14,7 +14,12 @@
     "enable_offline_test",
     "photo_retention_section",
     "photo_retention_days",
-    "enable_photo_cleanup"
+    "enable_photo_cleanup",
+    "production_section",
+    "enable_production_attendance",
+    "enable_production_offline",
+    "production_require_photo",
+    "production_require_location"
   ],
   "fields": [
     {
@@ -38,7 +43,7 @@
       "fieldtype": "Link",
       "options": "Employee",
       "label": "Dedicated Test Employee",
-      "reqd": 1
+      "reqd": 0
     },
     {
       "fieldname": "require_test_photo",
@@ -82,6 +87,35 @@
       "label": "Enable Automatic Photo Cleanup",
       "fieldname": "enable_photo_cleanup",
       "default": "0"
+    },
+    {
+      "fieldname": "production_section",
+      "label": "Production employee policy",
+      "fieldtype": "Section Break"
+    },
+    {
+      "fieldname": "enable_production_attendance",
+      "label": "Enable Company Production Attendance",
+      "default": "0",
+      "fieldtype": "Check"
+    },
+    {
+      "fieldname": "enable_production_offline",
+      "label": "Enable Company Production Offline Claims",
+      "default": "0",
+      "fieldtype": "Check"
+    },
+    {
+      "fieldname": "production_require_photo",
+      "label": "Require Production Photo and GPS",
+      "default": "1",
+      "fieldtype": "Check"
+    },
+    {
+      "fieldname": "production_require_location",
+      "label": "Require Production Workplace GPS",
+      "default": "1",
+      "fieldtype": "Check"
     }
   ],
   "permissions": [

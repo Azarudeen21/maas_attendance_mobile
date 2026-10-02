@@ -17,7 +17,9 @@ frappe.pages['maas-attendance-controls'].on_page_load = function(wrapper) {
       const data = response.message;
       if (data?.api_version !== 1 || data.test_mode !== true) throw new Error('Invalid overview');
       body.empty();
-      $('<div class="alert alert-info"></div>').text(__('Test attendance only. Every punch skips automatic attendance. Offline uploads require HR approval. Photos are evidence; face identity and liveness are not verified.')).appendTo(body);
+      $('<div class="alert alert-info"></div>').text(data.production_supported
+        ? __('Production attendance requires employee enrollment, company/site gates and an approved device. Production punches feed normal ERPNext shift processing; test punches skip automatic attendance. Offline claims require HR approval. Photos do not verify identity or liveness.')
+        : __('Test attendance only. Every punch skips automatic attendance. Offline uploads require HR approval. Photos are evidence; face identity and liveness are not verified.')).appendTo(body);
       $('<h4></h4>').text(__('Current policy')).appendTo(body);
       $('<p></p>').text(data.policy.use_company_test_policies
         ? __('Company test policies select the dedicated employee. Site switches and evidence requirements remain global gates and minimums.')
@@ -28,6 +30,8 @@ frappe.pages['maas-attendance-controls'].on_page_load = function(wrapper) {
         ['require_approved_device', 'Approved device required for online punches'],
         ['enable_offline_test', 'Offline test claims'],
         ['require_test_photo', 'Punch photo and GPS required'],
+        ['enable_production_attendance', 'Production attendance'],
+        ['enable_production_offline', 'Production offline claims'],
       ];
       const list = $('<ul></ul>').appendTo(body);
       policies.forEach(([key, label]) => $('<li></li>').text(`${__(label)}: ${data.policy[key] ? __('Enabled') : __('Disabled')}`).appendTo(list));
@@ -44,6 +48,7 @@ frappe.pages['maas-attendance-controls'].on_page_load = function(wrapper) {
       button(body, 'All offline claims', () => route('Mobile Attendance Offline Claim'));
       button(body, 'Manage workplaces', () => route('Mobile Attendance Workplace'));
       button(body, 'Company test policies', () => route('Mobile Attendance Company Policy'));
+      if (data.production_supported) button(body, 'Production employee enrollments', () => route('Mobile Attendance Employee'));
       button(body, 'Photo cleanup audits', () => route('Mobile Attendance Photo Cleanup'));
       $('<p class="text-muted mt-3"></p>').text(__('Photo cleanup is disabled by default. Open a company policy to set retention and preview eligible photos. Open a receipt or offline claim to keep its photo on hold. Pending offline claims are protected until final HR review.')).appendTo(body);
       $('<p class="text-muted mt-3"></p>').text(__('Open a device to approve or revoke it. Open an offline claim to inspect its photo and GPS, then approve or reject with a reason. Another HR reviewer must review their own device or claim. Counts follow your record access permissions.')).appendTo(body);

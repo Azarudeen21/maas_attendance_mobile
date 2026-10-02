@@ -20,7 +20,7 @@ def parse_claim(request):
         if len(request) > 3 * 1024 * 1024: raise ValueError('Offline request too large.')
         request = json.loads(request)
     required = {'request_id', 'log_type', 'timestamp', 'device_id', 'app_version', 'base_checkin', 'previous_request_id'}
-    if not isinstance(request, dict) or not required <= set(request) or set(request) - required - {'location', 'photo'}:
+    if not isinstance(request, dict) or not required <= set(request) or set(request) - required - {'location', 'photo', 'attendance_mode'}:
         raise ValueError('Invalid offline request fields.')
     payload, event = parse_request(*(request[key] for key in ('request_id', 'log_type', 'timestamp', 'device_id', 'app_version')))
     base = request['base_checkin']
@@ -31,6 +31,10 @@ def parse_claim(request):
         uuid4_string(previous)
         if previous == request['request_id']: raise ValueError('Circular offline request.')
     payload.update(base_checkin=base, previous_request_id=previous)
+    if request.get('attendance_mode', 'test') not in ('test', 'production'):
+        raise ValueError('Invalid attendance mode.')
+    if request.get('attendance_mode') == 'production':
+        payload['attendance_mode'] = 'production'
     if 'location' in request:
         payload['location'], _ = parse_location(request['location'])
     photo_bytes = None
@@ -47,15 +51,16 @@ def check_window(event, now):
 
 def reply(row, duplicate=False):
     return {'api_version': 1, 'request_id': row['name'], 'status': row['status'],
-            'checkin': row.get('checkin'), 'duplicate': duplicate, 'test_mode': True,
-            'skip_auto_attendance': True}
+            'checkin': row.get('checkin'), 'duplicate': duplicate,
+            'test_mode': row.get('test_mode', 1) in (1, '1', True),
+            'skip_auto_attendance': row.get('test_mode', 1) in (1, '1', True)}
 
 
 def own_status(employee, request_id):
     try: uuid4_string(request_id)
     except ValueError: frappe.throw('Invalid request ID.', frappe.ValidationError)
     row = frappe.db.get_value(CLAIM, {'name': request_id, 'employee': employee['name'], 'user': frappe.session.user},
-        ['name', 'status', 'checkin'], as_dict=True)
+        ['name', 'status', 'checkin', 'test_mode'], as_dict=True)
     return reply(row) if row else {'api_version': 1, 'request_id': request_id, 'status': 'Not Found', 'checkin': None, 'duplicate': False, 'test_mode': True, 'skip_auto_attendance': True}
 
 
@@ -87,9 +92,11 @@ def submit(employee, request, device_secret):
     config = attendance.settings(employee["name"])
     if not enabled(employee['name'], config):
         frappe.throw('Offline test submission is disabled.', frappe.PermissionError)
+    from maas_attendance_mobile.production_policy import require_mode
+    require_mode(config, payload.get('attendance_mode', 'test'))
     registration = require_approved(employee, payload['device_id'], device_secret)
     fingerprint = request_hash(payload, employee['name'], user)
-    old = frappe.db.get_value(CLAIM, payload['request_id'], ['name', 'employee', 'user', 'request_hash', 'status', 'checkin'], as_dict=True, for_update=True)
+    old = frappe.db.get_value(CLAIM, payload['request_id'], ['name', 'employee', 'user', 'request_hash', 'status', 'checkin', 'test_mode'], as_dict=True, for_update=True)
     if old:
         if old['employee'] != employee['name'] or old['user'] != user or old['request_hash'] != fingerprint:
             frappe.throw('Request ID already belongs to a different claim.', frappe.ValidationError)
@@ -115,7 +122,8 @@ def submit(employee, request, device_secret):
     values = {'doctype': CLAIM, 'request_id': payload['request_id'], 'employee': employee['name'], 'user': user,
         'request_hash': fingerprint, 'payload_json': json.dumps(payload, sort_keys=True), 'registered_device': registration,
         'log_type': payload['log_type'], 'event_time': site_time(event, get_system_timezone()),
-        'status': 'Pending Review', 'checkin': None}
+        'status': 'Pending Review', 'checkin': None,
+        'test_mode': int(not config.get('production_mode', False)), 'event_company': current['company']}
     previous = frappe.flags.get('maas_offline_write')
     frappe.flags.maas_offline_write = payload['request_id']
     try:
@@ -150,6 +158,11 @@ def review(request_id, decision, reason):
         return reply(doc.as_dict(), True)
     if decision == 'Approved':
         config = attendance.settings(doc.employee)
+        from maas_attendance_mobile.production_policy import require_mode
+        production = doc.get('test_mode', 1) in (0, '0', False)
+        require_mode(config, 'production' if production else 'test')
+        if doc.get('event_company') and (not current or current['company'] != doc.get('event_company')):
+            frappe.throw('The employee company changed after capture. HR must resolve this claim manually.', frappe.ValidationError)
         if str(config.get('require_test_photo', 0)) == '1' and not doc.get('punch_photo'):
             frappe.throw('Photo evidence is missing. Reject and arrange a manual correction.', frappe.ValidationError)
         if not current or current['user_id'] != doc.user or current['status'] != 'Active' or not frappe.db.get_value('User', doc.user, 'enabled') or 'Employee' not in frappe.get_roles(doc.user) or not enabled(doc.employee, config):
@@ -173,9 +186,16 @@ def review(request_id, decision, reason):
         try: check_transition(latest, payload['log_type'], local)
         except ValueError as error: frappe.throw(str(error), frappe.ValidationError)
         gps = gps_check(payload, event, current['company'], config)
-        checkin = frappe.get_doc({'doctype': 'Employee Checkin', 'employee': doc.employee, 'log_type': payload['log_type'],
-            'time': local, 'device_id': 'MAAS-OFFLINE-TEST:' + payload['device_id'], 'skip_auto_attendance': 1,
-            **({'latitude': payload['location']['latitude'], 'longitude': payload['location']['longitude']} if gps else {})}).insert(ignore_permissions=True)
+        previous_context = frappe.flags.get('maas_test_punch')
+        frappe.flags.maas_test_punch = {'employee': doc.employee, 'user': frappe.session.user,
+            'request_id': request_id, 'production': production}
+        try:
+            checkin = frappe.get_doc({'doctype': 'Employee Checkin', 'employee': doc.employee, 'log_type': payload['log_type'],
+                'time': local, 'device_id': ('MAAS-OFFLINE:' if production else 'MAAS-OFFLINE-TEST:') + payload['device_id'],
+                'skip_auto_attendance': int(not production),
+                **({'latitude': payload['location']['latitude'], 'longitude': payload['location']['longitude']} if gps or payload.get('photo') else {})}).insert(ignore_permissions=True)
+        finally:
+            frappe.flags.maas_test_punch = previous_context
         doc.checkin = checkin.name
     from frappe.utils import now_datetime
     doc.status, doc.reviewed_by, doc.reviewed_at, doc.review_reason = decision, frappe.session.user, now_datetime(), reason.strip()

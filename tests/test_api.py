@@ -53,6 +53,8 @@ class ApiTests(unittest.TestCase):
         self.devices = importlib.reload(maas_attendance_mobile.devices)
         import maas_attendance_mobile.company_policy
         importlib.reload(maas_attendance_mobile.company_policy)
+        import maas_attendance_mobile.production_policy
+        importlib.reload(maas_attendance_mobile.production_policy)
 
     def tearDown(self):
         for name, module in self.previous.items():

@@ -1,4 +1,4 @@
-"""Online, allowlisted test punches. Not a production attendance policy."""
+"""Online test or enrolled production punches with explicit mode binding."""
 
 from datetime import datetime, timezone
 import json
@@ -28,7 +28,7 @@ def enabled_for(employee, config):
 
 def require_enabled(employee, config):
     if not enabled_for(employee, config):
-        frappe.throw("Online test attendance is disabled for this employee.", frappe.PermissionError)
+        frappe.throw("Attendance is disabled for this employee.", frappe.PermissionError)
 
 
 def latest_checkin(employee, *, lock=False):
@@ -43,15 +43,18 @@ def status(employee):
     latest = latest_checkin(employee["name"])
     from maas_attendance_mobile.offline import enabled
     return {
-        "api_version": 1, "test_mode": True,
-        "online_test_submission_enabled": enabled_for(employee["name"], config),
+        "api_version": 1, "test_mode": not bool(config.get('production_mode')),
+        "attendance_mode": 'production' if config.get('production_mode') else 'test',
+        "online_submission_enabled": enabled_for(employee["name"], config),
+        "online_test_submission_enabled": enabled_for(employee["name"], config) and not config.get('production_mode', False),
         "last_checkin": dict(latest) if latest else None,
         "next_log_type": "OUT" if latest and latest["log_type"] == "IN" else
                          "IN" if not latest or latest["log_type"] == "OUT" else None,
-        "skip_auto_attendance": True,
+        "skip_auto_attendance": not bool(config.get('production_mode')),
         "location_required": str(config.get("require_test_location", 0)) == "1",
         "approved_device_required": str(config.get("require_approved_device", 0)) == "1",
-        "offline_test_submission_enabled": enabled(employee['name'], config),
+        "offline_test_submission_enabled": enabled(employee['name'], config) and not config.get('production_mode', False),
+        "offline_submission_enabled": enabled(employee['name'], config),
         "photo_required": str(config.get('require_test_photo', 0)) == '1',
     }
 
@@ -63,11 +66,12 @@ def _reply(receipt, duplicate):
         "api_version": 1, "request_id": receipt["name"], "checkin": receipt["checkin"],
         "employee": receipt["employee"], "log_type": receipt["log_type"],
         "time": receipt["event_time"], "timestamp_utc": receipt["timestamp_utc"],
-        "duplicate": duplicate, "test_mode": True, "skip_auto_attendance": True,
+        "duplicate": duplicate, "test_mode": receipt.get('test_mode', 1) in (1, '1', True),
+        "skip_auto_attendance": receipt.get('test_mode', 1) in (1, '1', True),
     }
 
 
-def submit(employee, request_id, log_type, timestamp, device_id, app_version, location=None, device_secret=None, photo=None):
+def submit(employee, request_id, log_type, timestamp, device_id, app_version, location=None, device_secret=None, photo=None, attendance_mode='test'):
     photo_bytes = photo_at = None
     try:
         payload, event = parse_request(request_id, log_type, timestamp, device_id, app_version)
@@ -93,13 +97,18 @@ def submit(employee, request_id, log_type, timestamp, device_id, app_version, lo
         frappe.throw("This login is not eligible for attendance.", frappe.PermissionError)
     config = settings(employee["name"])
     require_enabled(employee["name"], config)
+    from maas_attendance_mobile.production_policy import require_mode
+    require_mode(config, attendance_mode)
+    production = bool(config.get('production_mode'))
+    if production:
+        payload['attendance_mode'] = 'production'
     registered_device = None
     if str(config.get("require_approved_device", 0)) == "1":
         from maas_attendance_mobile.devices import require_approved
         registered_device = require_approved(employee, device_id, device_secret)
     fingerprint = request_hash(payload, employee["name"], user)
     receipt = frappe.db.get_value(RECEIPT, request_id, [
-        "name", "employee", "request_hash", "checkin", "log_type", "event_time", "timestamp_utc",
+        "name", "employee", "request_hash", "checkin", "log_type", "event_time", "timestamp_utc", "test_mode",
     ], as_dict=True, for_update=True)
     if receipt:
         if receipt["employee"] != employee["name"] or receipt["request_hash"] != fingerprint:
@@ -141,21 +150,22 @@ def submit(employee, request_id, log_type, timestamp, device_id, app_version, lo
     except ValueError as error:
         frappe.throw(str(error), frappe.ValidationError)
 
-    context = {"employee": employee["name"], "user": user, "request_id": request_id}
+    context = {"employee": employee["name"], "user": user, "request_id": request_id, 'production': production}
     previous = frappe.flags.get("maas_test_punch")
     frappe.flags.maas_test_punch = context
     try:
         checkin = frappe.get_doc({
             "doctype": "Employee Checkin", "employee": employee["name"],
             "time": local_time, "log_type": log_type,
-            "device_id": "MAAS-TEST:" + device_id, "skip_auto_attendance": 1,
+            "device_id": ('MAAS:' if production else 'MAAS-TEST:') + device_id,
+            "skip_auto_attendance": int(not production),
             **({"latitude": location["latitude"], "longitude": location["longitude"]} if gps or photo_bytes else {}),
         }).insert(ignore_permissions=True)
         receipt = frappe.get_doc({
             "doctype": RECEIPT, "request_id": request_id, "employee": employee["name"],
             "request_hash": fingerprint, "checkin": checkin.name, "log_type": log_type,
             "event_time": local_time, "timestamp_utc": payload["timestamp_utc"],
-            "device_id": device_id, "app_version": app_version, "test_mode": 1,
+            "device_id": device_id, "app_version": app_version, "test_mode": int(not production),
             "location_json": json.dumps(location, sort_keys=True) if location else None,
             "workplace": gps["workplace"] if gps else None,
             "distance_m": gps["distance_m"] if gps else None,
@@ -179,16 +189,22 @@ def guard_checkin(doc, method=None):
     from maas_attendance_mobile.company_policy import test_login
     site = settings()
     test_user = frappe.session.user
-    if not test_login(site, test_user):
+    from maas_attendance_mobile.production_policy import enrolled_login
+    protected = test_login(site, test_user) or enrolled_login(test_user)
+    if not protected:
         return
     context = frappe.flags.get("maas_test_punch")
     if not context or context.get("user") != test_user or context.get("employee") != doc.employee or not doc.is_new():
         frappe.throw("Use the MAAS test punch API for this account.", frappe.PermissionError)
     require_enabled(doc.employee, settings(doc.employee))
-    doc.skip_auto_attendance = 1
+    production = bool(settings(doc.employee).get('production_mode'))
+    if bool(context.get('production')) != production:
+        frappe.throw('The attendance policy changed.', frappe.PermissionError)
+    doc.skip_auto_attendance = int(not production)
 
 
 def guard_delete(doc, method=None):
     from maas_attendance_mobile.company_policy import test_login
-    if test_login(settings(), frappe.session.user):
+    from maas_attendance_mobile.production_policy import enrolled_login
+    if test_login(settings(), frappe.session.user) or enrolled_login(frappe.session.user):
         frappe.throw("Ask HR to review attendance corrections.", frappe.PermissionError)

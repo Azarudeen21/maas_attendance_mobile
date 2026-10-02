@@ -11,7 +11,7 @@ class MobileAttendanceOfflineClaim(Document):
             if self.status != 'Pending Review' or self.checkin or self.reviewed_by or self.reviewed_at or self.review_reason:
                 frappe.throw('New offline claims must await review.', frappe.ValidationError)
         else:
-            for field in ('request_id', 'employee', 'user', 'request_hash', 'payload_json', 'registered_device', 'log_type', 'event_time',
+            for field in ('request_id', 'employee', 'user', 'request_hash', 'payload_json', 'registered_device', 'log_type', 'event_time', 'test_mode', 'event_company',
                           'photo_company', 'photo_uploaded_at', 'photo_retention_hold', 'photo_hold_reason',
                           'photo_hold_by', 'photo_hold_at', 'photo_removed_at', 'photo_cleanup'):
                 if self.get(field) != old.get(field):

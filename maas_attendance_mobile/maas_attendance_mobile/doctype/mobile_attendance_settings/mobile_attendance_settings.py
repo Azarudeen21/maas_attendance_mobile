@@ -4,6 +4,18 @@ from frappe.model.document import Document
 
 class MobileAttendanceSettings(Document):
     def validate(self):
+        production = self.get('enable_production_attendance') in (1, '1', True)
+        if self.get('enable_production_offline') in (1, '1', True) and not production:
+            frappe.throw('Enable production attendance before enabling production offline claims.')
+        if production:
+            from maas_attendance_mobile.company_policy import validate_workplaces
+            for policy in frappe.get_all('Mobile Attendance Company Policy', filters={'enable_production_attendance': 1},
+                fields=['company', 'production_require_location', 'production_require_photo']):
+                if policy.get('production_require_location') in (1, '1', True):
+                    validate_workplaces(policy['company'])
+                if policy.get('production_require_photo') in (1, '1', True):
+                    from maas_attendance_mobile.photos import require_file_guard
+                    require_file_guard()
         if self.get('enable_mobile_site_setup') in (1, '1', True):
             if not self.get('mobile_oauth_client'):
                 frappe.throw('Select the public OAuth client for mobile site setup.')

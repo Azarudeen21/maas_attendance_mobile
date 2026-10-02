@@ -106,3 +106,16 @@ test('photo retention preview shows counts and does not enable cleanup', async (
   assert.ok(message.message.includes('Eligible photos: 2'));
   assert.ok(message.message.includes('Automatic cleanup is disabled.'));
 });
+
+test('emergency disable covers both production and test submission gates', async () => {
+  const h = harness('doctype/mobile_attendance_settings/mobile_attendance_settings.js');
+  let values, saves = 0;
+  const frm = {add_custom_button: (label, callback) => h.buttons.push({label, callback}),
+    set_value: async value => values = value, save: async () => saves++};
+  h.handlers['Mobile Attendance Settings'].refresh(frm);
+  await h.buttons.find(button => button.label === 'Disable all mobile submissions').callback();
+  await new Promise(resolve => setImmediate(resolve));
+  assert.deepEqual(JSON.parse(JSON.stringify(values)), {enable_test_attendance: 0, enable_offline_test: 0,
+    enable_production_attendance: 0, enable_production_offline: 0});
+  assert.equal(saves, 1);
+});

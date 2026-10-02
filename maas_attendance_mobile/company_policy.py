@@ -6,6 +6,13 @@ REQUIREMENTS = ('require_test_photo', 'require_test_location', 'require_approved
 
 
 def effective(employee, site):
+    if site.get('enable_production_attendance') in (1, '1', True):
+        test = effective(employee, {**site, 'enable_production_attendance': 0})
+        # Dedicated test employees never silently become production employees.
+        if test.get('test_employee') == employee:
+            return test
+        from maas_attendance_mobile.production_policy import configuration
+        return configuration(employee, site)
     if str(site.get('use_company_test_policies', 0)) != '1':
         return site
     company = frappe.db.get_value('Employee', employee, 'company')
@@ -33,11 +40,11 @@ def test_login(site, user):
 def validate_employee(employee, company=None):
     row = frappe.db.get_value('Employee', employee, ['status', 'user_id', 'company'], as_dict=True) if employee else None
     if not row or row['status'] != 'Active' or not row['user_id'] or company and row['company'] != company:
-        frappe.throw('Select an active test employee in this company with a linked Employee login.')
+        frappe.throw('Select an active employee in this company with a linked Employee login.')
     if not frappe.db.get_value('User', row['user_id'], 'enabled') or 'Employee' not in frappe.get_roles(row['user_id']):
-        frappe.throw('The test login must be enabled and have the Employee role.')
+        frappe.throw('The employee login must be enabled and have the Employee role.')
     if len(frappe.get_all('Employee', filters={'user_id': row['user_id']}, limit_page_length=2)) != 1:
-        frappe.throw('The test login must have exactly one linked employee.')
+        frappe.throw('The employee login must have exactly one linked employee.')
     return row
 
 

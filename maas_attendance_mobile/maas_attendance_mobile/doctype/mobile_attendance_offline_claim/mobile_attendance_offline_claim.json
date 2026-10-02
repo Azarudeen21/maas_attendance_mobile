@@ -22,7 +22,9 @@
     "photo_hold_by",
     "photo_hold_at",
     "photo_removed_at",
-    "photo_cleanup"
+    "photo_cleanup",
+    "test_mode",
+    "event_company"
   ],
   "doctype": "DocType",
   "sort_order": "ASC",
@@ -192,6 +194,20 @@
       "options": "Mobile Attendance Photo Cleanup",
       "label": "Photo Cleanup Audit",
       "fieldname": "photo_cleanup"
+    },
+    {
+      "fieldname": "test_mode",
+      "label": "Test Mode",
+      "read_only": 1,
+      "default": "1",
+      "fieldtype": "Check"
+    },
+    {
+      "fieldname": "event_company",
+      "label": "Company at Upload",
+      "read_only": 1,
+      "options": "Company",
+      "fieldtype": "Link"
     }
   ],
   "autoname": "field:request_id",

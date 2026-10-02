@@ -326,7 +326,7 @@ These tests mock Frappe and verify pure rules/service contracts. They do not
 prove database rollback, locks, hook dispatch, OAuth middleware or installation.
 Live test-site checks for this revision:
 
-1. Gate disabled: app_version 0.11.0, test flag false, status readable only by
+1. Gate disabled: app_version 0.12.0, test flag false, status readable only by
    authenticated linked employee. Guests reject without employee details.
 2. Enable only Mobile Test. Fresh IN creates one standard checkin + receipt,
    correct employee/local time and Skip Auto Attendance checked.
@@ -343,7 +343,7 @@ Live test-site checks for this revision:
 8. GPS/device requirements default off. Configure and exercise both optional
    requirements in supervised tests, including revoked-device retry rejection.
 9. Disable both test gates after tests. History and offline test claim review
-   are implemented; face verification, production policy and release hardening remain future phases.
+   are implemented; face verification is deferred and release hardening remains pending.
 
 ## Company test policies (v0.10.0)
 
@@ -374,4 +374,24 @@ Frappe storage operations, including photo optimization. Other app File override
 must retain MAAS protection; new photo storage and cleanup reject incompatible
 controllers. Verify controller compatibility, real database locks, storage
 failure recovery and scheduler execution on an isolated clone before enabling
-cleanup. No production attendance gates are introduced by this revision.
+cleanup. No production attendance gates were introduced by v0.11.0.
+
+## Production enrollment (v0.12.0)
+
+Production submission is OFF by default. Configure the site production gate,
+company production policy and enabled Mobile Attendance Employee enrollment.
+Company is derived from the employee; changed company enrollment fails closed.
+Dedicated test employees stay in the test lane. Production requires an approved
+device and defaults to photo/GPS evidence. Production requests explicitly carry
+`attendance_mode: production`; test requests cannot silently become production.
+
+Production online checkins set Skip Auto Attendance to 0, leaving attendance
+processing to HRMS shift settings. Test checkins keep it at 1. Offline production
+evidence still requires HR approval, unchanged enrolled company and matching
+mode. Approval creates a checkin at the original captured time. Automatic
+offline acceptance is not implemented.
+
+Local checks: 133 mocked Python contract tests, 7 HR UI tests and 121 Flutter
+tests pass. Real migration, SQL locks/rollback, protected File override, shift
+processing and customer permissions require an isolated HRMS site pilot. Do not
+enable production or cleanup solely on the basis of these unit tests.

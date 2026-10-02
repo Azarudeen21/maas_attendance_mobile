@@ -6,6 +6,7 @@ from maas_attendance_mobile import __version__
 POLICY_FIELDS = (
     'enable_test_attendance', 'require_test_location', 'require_approved_device',
     'enable_offline_test', 'require_test_photo', 'use_company_test_policies',
+    'enable_production_attendance', 'enable_production_offline',
 )
 
 
@@ -21,7 +22,7 @@ def overview():
         rows = frappe.get_list(doctype, filters=filters, fields=['count(name) as total'])
         return int(rows[0]['total']) if rows else 0
     return {
-        'api_version': 1, 'app_version': __version__, 'test_mode': True,
+        'api_version': 1, 'app_version': __version__, 'test_mode': True, 'production_supported': True,
         'can_edit_settings': 'System Manager' in roles,
         'test_employee': config.get('test_employee'),
         'policy': {key: config.get(key) in (1, '1', True) for key in POLICY_FIELDS},

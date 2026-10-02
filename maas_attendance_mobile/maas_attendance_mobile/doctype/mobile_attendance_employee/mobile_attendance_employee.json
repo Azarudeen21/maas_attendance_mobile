@@ -1,0 +1,55 @@
+{
+  "name": "Mobile Attendance Employee",
+  "doctype": "DocType",
+  "sort_field": "modified",
+  "permissions": [
+    {
+      "role": "System Manager",
+      "read": 1,
+      "create": 1,
+      "write": 1
+    },
+    {
+      "role": "HR Manager",
+      "read": 1,
+      "create": 1,
+      "write": 1
+    }
+  ],
+  "engine": "InnoDB",
+  "track_changes": 1,
+  "field_order": [
+    "employee",
+    "company",
+    "enabled"
+  ],
+  "autoname": "field:employee",
+  "sort_order": "DESC",
+  "module": "MAAS Attendance Mobile",
+  "fields": [
+    {
+      "fieldtype": "Link",
+      "label": "Employee",
+      "unique": 1,
+      "fieldname": "employee",
+      "reqd": 1,
+      "in_list_view": 1,
+      "options": "Employee"
+    },
+    {
+      "fieldtype": "Link",
+      "label": "Company",
+      "fieldname": "company",
+      "reqd": 1,
+      "in_list_view": 1,
+      "options": "Company"
+    },
+    {
+      "fieldname": "enabled",
+      "label": "Enable Production Mobile Attendance",
+      "in_list_view": 1,
+      "default": "0",
+      "fieldtype": "Check"
+    }
+  ]
+}

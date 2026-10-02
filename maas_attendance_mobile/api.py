@@ -76,15 +76,16 @@ def capabilities():
         "device_id", "skip_auto_attendance", "latitude", "longitude", "geolocation"
     ]
     from maas_attendance_mobile.attendance import enabled_for, settings
+    config = settings(employee['name'])
     return {
         "api_version": 1,
         "app_version": __version__,
         "versions": versions,
         "employee_checkin_fields": [field for field in candidates if meta.has_field(field)],
-        "attendance_submission_enabled": False,
-        "online_test_submission_enabled": enabled_for(employee["name"], settings(employee["name"])),
-        "test_mode": True,
-        "offline_submission_enabled": False,
+        "attendance_submission_enabled": bool(config.get('production_mode')) and enabled_for(employee['name'], config),
+        "online_test_submission_enabled": not config.get('production_mode', False) and enabled_for(employee['name'], config),
+        "test_mode": not bool(config.get('production_mode')),
+        "offline_submission_enabled": bool(config.get('production_mode')) and enabled_for(employee['name'], config) and config.get('enable_offline_test') in (1, '1', True),
         "offline_test_claims_supported": True,
         "face_verification_enabled": False,
         "punch_photo_supported": True,
@@ -99,10 +100,10 @@ def attendance_status():
 
 
 @frappe.whitelist(methods=["POST"])
-def punch(request_id, log_type, timestamp, device_id, app_version, location=None, device_secret=None, photo=None):
+def punch(request_id, log_type, timestamp, device_id, app_version, location=None, device_secret=None, photo=None, attendance_mode='test'):
     """No employee, skip-attendance or face-verification input is accepted."""
     from maas_attendance_mobile.attendance import submit
-    return submit(_linked_employee(), request_id, log_type, timestamp, device_id, app_version, location=location, device_secret=device_secret, photo=photo)
+    return submit(_linked_employee(), request_id, log_type, timestamp, device_id, app_version, location=location, device_secret=device_secret, photo=photo, attendance_mode=attendance_mode)
 
 
 @frappe.whitelist(methods=["POST"])

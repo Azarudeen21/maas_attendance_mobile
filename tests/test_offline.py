@@ -46,6 +46,7 @@ class OfflineTests(unittest.TestCase):
         if value['doctype'] == self.service.CLAIM:
             for key, item in value.items(): setattr(doc, key, item)
             doc.user = 'employee@example.test'
+            doc.get.side_effect = lambda key, default=None: value.get(key, default)
             doc.as_dict.side_effect = lambda: dict(value, name=doc.name, status=doc.status, checkin=doc.checkin)
             doc.save.return_value = doc
             self.doc = doc
