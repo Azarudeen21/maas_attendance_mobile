@@ -1,0 +1,18 @@
+{
+ "doctype": "DocType", "name": "Mobile Attendance Workplace", "module": "MAAS Attendance Mobile",
+ "engine": "InnoDB", "autoname": "field:workplace_name", "title_field": "workplace_name",
+ "field_order": ["workplace_name", "company", "enabled", "latitude", "longitude", "radius_m", "max_accuracy_m"],
+ "fields": [
+  {"fieldname": "workplace_name", "fieldtype": "Data", "label": "Workplace Name", "reqd": 1, "unique": 1, "in_list_view": 1},
+  {"fieldname": "company", "fieldtype": "Link", "label": "Company", "options": "Company", "reqd": 1, "in_list_view": 1},
+  {"fieldname": "enabled", "fieldtype": "Check", "label": "Enabled", "default": "0", "in_list_view": 1},
+  {"fieldname": "latitude", "fieldtype": "Float", "precision": "6", "label": "Centre Latitude", "reqd": 1},
+  {"fieldname": "longitude", "fieldtype": "Float", "precision": "6", "label": "Centre Longitude", "reqd": 1},
+  {"fieldname": "radius_m", "fieldtype": "Float", "label": "Allowed Radius (metres)", "default": "100", "reqd": 1},
+  {"fieldname": "max_accuracy_m", "fieldtype": "Float", "label": "Maximum GPS Uncertainty (metres)", "default": "30", "reqd": 1,
+   "description": "The reported uncertainty circle must fit within the workplace boundary."}
+ ],
+ "permissions": [{"role": "System Manager", "read": 1, "write": 1, "create": 1, "delete": 1},
+                 {"role": "HR Manager", "read": 1, "write": 1, "create": 1}],
+ "sort_field": "modified", "sort_order": "DESC"
+}

@@ -1,6 +1,7 @@
 """Online, allowlisted test punches. Not a production attendance policy."""
 
 from datetime import datetime, timezone
+import json
 
 import frappe
 
@@ -43,6 +44,7 @@ def status(employee):
         "next_log_type": "OUT" if latest and latest["log_type"] == "IN" else
                          "IN" if not latest or latest["log_type"] == "OUT" else None,
         "skip_auto_attendance": True,
+        "location_required": str(config.get("require_test_location", 0)) == "1",
     }
 
 
@@ -57,9 +59,13 @@ def _reply(receipt, duplicate):
     }
 
 
-def submit(employee, request_id, log_type, timestamp, device_id, app_version):
+def submit(employee, request_id, log_type, timestamp, device_id, app_version, location=None):
     try:
         payload, event = parse_request(request_id, log_type, timestamp, device_id, app_version)
+        if location is not None:
+            from maas_attendance_mobile.geofence import parse_location
+            location, sampled_at = parse_location(location)
+            payload["location"] = location
     except (ValueError, OverflowError):
         frappe.throw("Invalid punch request. Use UUID v4 IDs, IN/OUT and an ISO timestamp with offset.", frappe.ValidationError)
 
@@ -73,7 +79,8 @@ def submit(employee, request_id, log_type, timestamp, device_id, app_version):
         frappe.throw("An active linked Employee record is required.", frappe.PermissionError)
     if not frappe.db.get_value("User", user, "enabled", for_update=True) or "Employee" not in frappe.get_roles(user):
         frappe.throw("This login is not eligible for attendance.", frappe.PermissionError)
-    require_enabled(employee["name"], settings())
+    config = settings()
+    require_enabled(employee["name"], config)
     fingerprint = request_hash(payload, employee["name"], user)
     receipt = frappe.db.get_value(RECEIPT, request_id, [
         "name", "employee", "request_hash", "checkin", "log_type", "event_time", "timestamp_utc",
@@ -83,6 +90,22 @@ def submit(employee, request_id, log_type, timestamp, device_id, app_version):
             frappe.throw("This request ID was already used for a different punch.", frappe.ValidationError)
         # A lost-response retry works even after the online freshness window.
         return _reply(receipt, True)
+
+    gps = None
+    if str(config.get("require_test_location", 0)) == "1":
+        if location is None:
+            frappe.throw("A fresh GPS location is required for this punch.", frappe.ValidationError)
+        from maas_attendance_mobile.geofence import evaluate
+        # Server derives the company under the employee lock; client cannot select it.
+        company = frappe.db.get_value("Employee", employee["name"], "company")
+        if not company:
+            frappe.throw("An employee company is required for GPS checks.", frappe.ValidationError)
+        workplaces = frappe.get_all("Mobile Attendance Workplace", filters={"company": company, "enabled": 1},
+            fields=["name", "latitude", "longitude", "radius_m", "max_accuracy_m"])
+        try:
+            gps = evaluate(location, sampled_at, workplaces, datetime.now(timezone.utc), event)
+        except ValueError as error:
+            frappe.throw(str(error), frappe.ValidationError)
 
     from frappe.utils import get_system_timezone
     local_time = site_time(event, get_system_timezone())
@@ -100,12 +123,17 @@ def submit(employee, request_id, log_type, timestamp, device_id, app_version):
             "doctype": "Employee Checkin", "employee": employee["name"],
             "time": local_time, "log_type": log_type,
             "device_id": "MAAS-TEST:" + device_id, "skip_auto_attendance": 1,
+            **({"latitude": location["latitude"], "longitude": location["longitude"]} if gps else {}),
         }).insert(ignore_permissions=True)
         receipt = frappe.get_doc({
             "doctype": RECEIPT, "request_id": request_id, "employee": employee["name"],
             "request_hash": fingerprint, "checkin": checkin.name, "log_type": log_type,
             "event_time": local_time, "timestamp_utc": payload["timestamp_utc"],
             "device_id": device_id, "app_version": app_version, "test_mode": 1,
+            "location_json": json.dumps(location, sort_keys=True) if location else None,
+            "workplace": gps["workplace"] if gps else None,
+            "distance_m": gps["distance_m"] if gps else None,
+            "accuracy_m": gps["accuracy_m"] if gps else None,
         }).insert(ignore_permissions=True)
     finally:
         frappe.flags.maas_test_punch = previous

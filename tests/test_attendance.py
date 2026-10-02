@@ -34,6 +34,7 @@ class AttendanceTests(unittest.TestCase):
         self.created = []
         self.frappe.db.get_value.side_effect = self.get_value
         self.frappe.get_doc = Mock(side_effect=self.get_doc)
+        self.frappe.get_all = Mock(return_value=[dict(name='Office', latitude=24.7, longitude=46.7, radius_m=100, max_accuracy_m=30)])
         self.old_utils = sys.modules.get('frappe.utils')
         utils = types.ModuleType('frappe.utils')
         utils.get_system_timezone = lambda: 'Asia/Riyadh'
@@ -51,6 +52,8 @@ class AttendanceTests(unittest.TestCase):
 
     def get_value(self, doctype, name, field, **kwargs):
         if doctype == 'Employee':
+            if field == 'company':
+                return 'Test Company'
             return self.employee['user_id'] if field == 'user_id' else self.employee
         if doctype == 'User':
             return 1
@@ -90,6 +93,45 @@ class AttendanceTests(unittest.TestCase):
         employee_read = next(c for c in self.frappe.db.get_value.call_args_list
                              if c.args[0] == 'Employee' and isinstance(c.args[2], list))
         self.assertTrue(employee_read.kwargs['for_update'])
+
+    def gps(self):
+        return dict(latitude=24.7, longitude=46.7, accuracy_m=5,
+                    timestamp=self.args['timestamp'], precise=True, is_mocked=False)
+
+    def test_gps_policy_requires_location_before_creating_records(self):
+        self.config['require_test_location'] = '1'
+        with self.assertRaisesRegex(ValueError, 'GPS location is required'):
+            self.submit()
+        self.frappe.get_doc.assert_not_called()
+
+    def test_gps_uses_server_company_and_records_evidence(self):
+        self.config['require_test_location'] = '1'
+        self.submit(location=self.gps())
+        self.assertEqual(self.frappe.get_all.call_args.kwargs['filters'], {'company': 'Test Company', 'enabled': 1})
+        self.assertEqual(self.created[0]['latitude'], 24.7)
+        self.assertEqual(self.created[1]['workplace'], 'Office')
+        self.assertEqual(self.created[1]['accuracy_m'], 5)
+
+    def test_rejected_location_creates_no_records(self):
+        self.config['require_test_location'] = '1'
+        for changes in [dict(latitude=25), dict(precise=False), dict(is_mocked=True), dict(accuracy_m=100)]:
+            with self.assertRaises(ValueError):
+                self.submit(location=dict(self.gps(), **changes))
+        self.frappe.get_doc.assert_not_called()
+
+    def test_gps_retry_does_not_recheck_changed_workplace_policy(self):
+        from maas_attendance_mobile.geofence import parse_location
+        self.config['require_test_location'] = '1'
+        gps = self.gps()
+        payload, _ = parse_request(**self.args)
+        payload['location'] = parse_location(gps)[0]
+        self.receipt = self.saved_receipt()
+        self.receipt['request_hash'] = request_hash(payload, self.employee['name'], self.frappe.session.user)
+        self.frappe.get_all.return_value = []
+        self.assertTrue(self.submit(location=gps)['duplicate'])
+        self.frappe.get_all.assert_not_called()
+        with self.assertRaises(ValueError):
+            self.submit(location=dict(gps, latitude=25))
 
     def test_default_disabled_and_wrong_allowlist_create_nothing(self):
         for config in ({}, {'enable_test_attendance': '1', 'test_employee': 'OTHER'}):

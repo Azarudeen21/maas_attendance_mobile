@@ -1,22 +1,22 @@
 # MAAS Attendance Mobile — Frappe app
 
-Version 0.2.0 adds a disabled-by-default online TEST punch service. This is a
-staged development checkpoint, not a complete production attendance app.
-Version 0.1.0 profile/capabilities were verified on the v16 test site; this
-release still requires deployment and live database tests. Flutter currently
-shows the profile only. Mobile attendance buttons follow backend validation.
+Version 0.3.0 adds optional server GPS workplace checks to the online TEST
+punch service. Authentication, profile and basic online test punches were
+verified on the v16 test site. This release requires migration and live GPS
+policy validation. It is not a complete production attendance app.
 
 ## Installation and update
 
 Keep pyproject.toml and the maas_attendance_mobile package at repository root.
 Frappe, ERPNext and HRMS must already be installed. Bench metadata allows
 v15/v16; v15 live installation and compatibility remain unverified.
-No new pip or Flutter dependency is required by this release.
+No new Python dependency is required. The Flutter app uses geolocator for
+foreground GPS capture.
 
 For an existing installation deploy the new revision and migrate the test site
-through Frappe Cloud; do not uninstall/reinstall. Migration adds two DocTypes:
-Mobile Attendance Settings (Single) and Mobile Attendance Transaction (audit
-receipt). No test gate is enabled and no checkin is created by installation.
+through Frappe Cloud; do not uninstall/reinstall. Migration adds Mobile
+Attendance Workplace and GPS fields to settings and audit transactions.
+GPS enforcement defaults off. No checkin is created by installation.
 Keep a current test-site backup before migration.
 
 ## API contract
@@ -47,11 +47,40 @@ Punch accepts request_id (canonical UUID v4), log_type (IN or OUT), timestamp
 Example values are illustrative. Generate a fresh UUID/current timestamp for a
 NEW punch. Retain every request value when retrying a lost response. Device
 UUID is audit metadata, not trusted device approval. No employee/user ID,
-skip-attendance, GPS or face-verification input authorizes a punch. Employee
+skip-attendance or face-verification input authorizes a punch. Employee
 lookup enforces normal read permissions, enabled login, Employee role, exactly
 one linked Employee and Active status.
 
 ## Test policy
+
+## Optional GPS workplace requirement (v0.3.0)
+
+HR Manager or System Manager can create Mobile Attendance Workplace records
+with a company, enabled flag, centre coordinates, radius and maximum GPS
+uncertainty. All enabled workplaces for the authenticated employee's company
+are eligible; employee-specific workplace assignments are not implemented.
+System Manager can turn on Require GPS Workplace Check for Test Punches in
+Mobile Attendance Settings. Both IN and OUT then require location:
+latitude, longitude, accuracy_m, offset-bearing timestamp, precise (JSON bool),
+is_mocked (JSON bool). The client captures a fresh fix for each NEW punch.
+
+The server requires a sample no more than 30 seconds old or 5 seconds ahead,
+within 30 seconds of the punch timestamp. Precise must be true, is_mocked false,
+and uncertainty positive and at most the configured limit. Distance from the
+centre plus uncertainty must fit within the workplace radius. Missing company,
+missing workplaces or invalid configuration reject the punch. The server
+chooses company and workplace; no client-supplied workplace ID is accepted.
+GPS evidence and the validated workplace are stored in the immutable receipt.
+Exact retry hashes include GPS and return the original result without requiring
+a new GPS sample or rechecking a changed workplace. The test gate still applies.
+
+These rules validate reported coordinates. They do not establish spoof-proof
+physical presence. Device approval, face verification, offline sync and
+production attendance policies remain pending. The standalone GPS diagnostic
+card remains local-only; the location attached to an enabled GPS punch is sent
+to ERPNext. Do not configure emulator coordinates as a real workplace.
+
+## Online test gate
 
 As System Manager open Mobile Attendance Settings. Leave Enable Online Test
 Attendance unchecked for initial deployment/API validation. Then select ONLY

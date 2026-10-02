@@ -90,7 +90,7 @@ def attendance_status():
 
 
 @frappe.whitelist(methods=["POST"])
-def punch(request_id, log_type, timestamp, device_id, app_version):
+def punch(request_id, log_type, timestamp, device_id, app_version, location=None):
     """No employee, skip-attendance or face-verification input is accepted."""
     from maas_attendance_mobile.attendance import submit
-    return submit(_linked_employee(), request_id, log_type, timestamp, device_id, app_version)
+    return submit(_linked_employee(), request_id, log_type, timestamp, device_id, app_version, location=location)

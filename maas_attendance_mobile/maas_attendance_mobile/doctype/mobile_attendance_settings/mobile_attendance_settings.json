@@ -6,14 +6,15 @@
  "field_order": [
   "notice",
   "enable_test_attendance",
-  "test_employee"
+  "test_employee",
+  "require_test_location"
  ],
  "fields": [
   {
    "fieldname": "notice",
    "fieldtype": "HTML",
    "label": "Test checkpoint",
-   "options": "<p>Development test only. All MAAS punches skip auto attendance. GPS, face verification and offline submission are unavailable.</p>"
+   "options": "<p>Development test only. All MAAS punches skip auto attendance. Optional GPS workplace checks are available; face verification and offline submission are not yet enabled.</p>"
   },
   {
    "fieldname": "enable_test_attendance",
@@ -27,7 +28,9 @@
    "label": "Test Employee",
    "options": "Employee",
    "description": "Choose only your dedicated Mobile Test employee. This login must use the custom punch API."
-  }
+  },
+  {"fieldname": "require_test_location", "fieldtype": "Check", "label": "Require GPS Workplace Check for Test Punches", "default": "0",
+   "description": "Enable only after configuring an enabled Mobile Attendance Workplace for the test employee's company. Both IN and OUT require a fresh precise location."}
  ],
  "permissions": [
   {
