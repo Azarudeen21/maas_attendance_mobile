@@ -5,12 +5,15 @@
   "engine": "InnoDB",
   "field_order": [
     "notice",
+    "test_policy_section",
     "enable_test_attendance",
     "test_employee",
+    "capture_section",
+    "require_test_photo",
     "require_test_location",
     "require_approved_device",
-    "enable_offline_test",
-    "require_test_photo"
+    "offline_section",
+    "enable_offline_test"
   ],
   "fields": [
     {
@@ -58,6 +61,21 @@
       "fieldname": "require_test_photo",
       "fieldtype": "Check",
       "default": "0"
+    },
+    {
+      "fieldname": "test_policy_section",
+      "fieldtype": "Section Break",
+      "label": "Test policy"
+    },
+    {
+      "fieldname": "capture_section",
+      "fieldtype": "Section Break",
+      "label": "Punch evidence"
+    },
+    {
+      "fieldname": "offline_section",
+      "fieldtype": "Section Break",
+      "label": "Offline review"
     }
   ],
   "permissions": [
@@ -66,9 +84,14 @@
       "read": 1,
       "write": 1,
       "create": 1
+    },
+    {
+      "role": "HR Manager",
+      "read": 1
     }
   ],
   "sort_field": "creation",
   "sort_order": "DESC",
-  "issingle": 1
+  "issingle": 1,
+  "track_changes": 1
 }

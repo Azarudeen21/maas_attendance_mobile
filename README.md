@@ -1,6 +1,7 @@
 # MAAS Attendance Mobile — Frappe app
 
-Version 0.7.0 adds private punch photos with GPS and the original button time,
+Version 0.8.0 adds an HR control screen and stronger settings validation.
+Version 0.7.0 added private punch photos with GPS and the original button time,
 without face recognition or liveness. It also includes offline test claims with explicit HR review, alongside
 employee check-in history, device approval and server GPS workplace checks.
 Authentication, profile and basic online test punches were
@@ -38,6 +39,24 @@ sessions both use the server session identity. Paths below are prefixed by
 - POST submit_offline_claim: immutable delayed claim from an approved device.
 - GET offline_claim_status: own request UUID's review state, without evidence.
 - POST review_offline_claim: HR Manager/System Manager approves or rejects with a reason.
+- GET hr_overview: permission-scoped counts and policy for HR/System Managers.
+
+## HR attendance controls (v0.8.0)
+
+Find MAAS Attendance Controls using Desk search, or open Mobile Attendance
+Settings and click HR controls. HR Managers can read policy and review devices,
+offline claims, workplaces and punch photo records. System Managers can edit
+settings. Counts use permission-aware get_list queries and contain no employee
+list, installation credentials or photo evidence. Both the Page and API restrict
+access to HR Manager/System Manager; normal record permissions still apply.
+
+The settings screen groups test policy, punch evidence and offline review.
+Disable test submissions saves both online/offline gates off through the standard
+form. It does not delete saved data. GPS workplace enforcement cannot be enabled
+with online testing until the selected employee's company has a valid enabled
+workplace. Device forms offer approval/revocation actions; existing server rules
+still block self-review, identity edits and reactivation of revoked devices.
+Offline claim forms retain reasoned approval/rejection and conflict checks.
 
 ## Punch photo and GPS evidence (v0.7.0)
 
@@ -82,6 +101,12 @@ hours. During that signed-in session the user can explicitly save up to 20
 offline events. Original UUID/time/GPS/predecessor are saved in secure storage
 before upload; the installation secret remains in the separate credential vault.
 There is no background capture or automatic background sync.
+The mobile app now retries queued uploads automatically while open and signed
+in (bounded backoff, up to one minute), and on returning to the foreground.
+Empty queues cause no network requests. Manual sync remains available. Uploads
+pause during capture/review operations and retain original UUID/time/photo/GPS.
+If the app is closed, reopen it to resume sync; OS background jobs are not yet
+implemented. A prepared offline session is still required for capture.
 
 Uploads must arrive within 24 hours and no more than two minutes in the future.
 GPS samples are compared to their original event time and current configured
@@ -269,7 +294,7 @@ These tests mock Frappe and verify pure rules/service contracts. They do not
 prove database rollback, locks, hook dispatch, OAuth middleware or installation.
 Live test-site checks for this revision:
 
-1. Gate disabled: app_version 0.7.0, test flag false, status readable only by
+1. Gate disabled: app_version 0.8.0, test flag false, status readable only by
    authenticated linked employee. Guests reject without employee details.
 2. Enable only Mobile Test. Fresh IN creates one standard checkin + receipt,
    correct employee/local time and Skip Auto Attendance checked.

@@ -133,3 +133,9 @@ def offline_claim_status(request_id):
 def review_offline_claim(request_id, decision, reason):
     from maas_attendance_mobile.offline import review
     return review(request_id, decision, reason)
+
+
+@frappe.whitelist(methods=['GET'])
+def hr_overview():
+    from maas_attendance_mobile.hr_controls import overview
+    return overview()
