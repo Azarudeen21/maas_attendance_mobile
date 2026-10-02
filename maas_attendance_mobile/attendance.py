@@ -13,9 +13,13 @@ SETTINGS = "Mobile Attendance Settings"
 RECEIPT = "Mobile Attendance Transaction"
 
 
-def settings():
+def settings(employee=None):
     # No cached settings: an administrator can disable this test gate immediately.
-    return frappe.db.get_singles_dict(SETTINGS)
+    site = frappe.db.get_singles_dict(SETTINGS)
+    if employee is None:
+        return site
+    from maas_attendance_mobile.company_policy import effective
+    return effective(employee, site)
 
 
 def enabled_for(employee, config):
@@ -35,7 +39,7 @@ def latest_checkin(employee, *, lock=False):
 
 
 def status(employee):
-    config = settings()
+    config = settings(employee["name"])
     latest = latest_checkin(employee["name"])
     from maas_attendance_mobile.offline import enabled
     return {
@@ -87,7 +91,7 @@ def submit(employee, request_id, log_type, timestamp, device_id, app_version, lo
         frappe.throw("An active linked Employee record is required.", frappe.PermissionError)
     if not frappe.db.get_value("User", user, "enabled", for_update=True) or "Employee" not in frappe.get_roles(user):
         frappe.throw("This login is not eligible for attendance.", frappe.PermissionError)
-    config = settings()
+    config = settings(employee["name"])
     require_enabled(employee["name"], config)
     registered_device = None
     if str(config.get("require_approved_device", 0)) == "1":
@@ -172,20 +176,19 @@ def submit(employee, request_id, log_type, timestamp, device_id, app_version, lo
 
 def guard_checkin(doc, method=None):
     """Prevent the configured normal test login bypassing this API via ORM routes."""
-    config = settings()
-    test_employee = config.get("test_employee")
-    test_user = frappe.db.get_value("Employee", test_employee, "user_id") if test_employee else None
-    if not test_user or frappe.session.user != test_user:
+    from maas_attendance_mobile.company_policy import test_login
+    site = settings()
+    test_user = frappe.session.user
+    if not test_login(site, test_user):
         return
     context = frappe.flags.get("maas_test_punch")
     if not context or context.get("user") != test_user or context.get("employee") != doc.employee or not doc.is_new():
         frappe.throw("Use the MAAS test punch API for this account.", frappe.PermissionError)
-    require_enabled(doc.employee, config)
+    require_enabled(doc.employee, settings(doc.employee))
     doc.skip_auto_attendance = 1
 
 
 def guard_delete(doc, method=None):
-    config = settings()
-    employee = config.get("test_employee")
-    if employee and frappe.db.get_value("Employee", employee, "user_id") == frappe.session.user:
+    from maas_attendance_mobile.company_policy import test_login
+    if test_login(settings(), frappe.session.user):
         frappe.throw("Ask HR to review attendance corrections.", frappe.PermissionError)

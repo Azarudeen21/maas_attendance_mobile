@@ -7,6 +7,7 @@
     "notice",
     "test_policy_section",
     "enable_test_attendance",
+    "use_company_test_policies",
     "test_employee",
     "capture_section",
     "require_test_photo",
@@ -104,6 +105,13 @@
       "options": "OAuth Client",
       "label": "Mobile Public OAuth Client",
       "description": "Authorization Code, Code response, Token Endpoint Auth Method None, all scope, MAAS redirect URI."
+    },
+    {
+      "fieldname": "use_company_test_policies",
+      "fieldtype": "Check",
+      "label": "Use Company Test Policies",
+      "default": "0",
+      "description": "Select a dedicated test employee per company using Mobile Attendance Company Policy. Site online/offline switches remain emergency gates; site evidence requirements are minimums."
     }
   ],
   "permissions": [

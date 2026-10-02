@@ -19,7 +19,9 @@ frappe.pages['maas-attendance-controls'].on_page_load = function(wrapper) {
       body.empty();
       $('<div class="alert alert-info"></div>').text(__('Test attendance only. Every punch skips automatic attendance. Offline uploads require HR approval. Photos are evidence; face identity and liveness are not verified.')).appendTo(body);
       $('<h4></h4>').text(__('Current policy')).appendTo(body);
-      $('<p></p>').text(__('Test employee: {0}', [data.test_employee || __('Not selected')])).appendTo(body);
+      $('<p></p>').text(data.policy.use_company_test_policies
+        ? __('Company test policies select the dedicated employee. Site switches and evidence requirements remain global gates and minimums.')
+        : __('Test employee: {0}', [data.test_employee || __('Not selected')])).appendTo(body);
       const policies = [
         ['enable_test_attendance', 'Online test attendance'],
         ['require_test_location', 'GPS workplace checks'],
@@ -41,6 +43,7 @@ frappe.pages['maas-attendance-controls'].on_page_load = function(wrapper) {
       button(body, 'Punch records and photos', () => route('Mobile Attendance Transaction'));
       button(body, 'All offline claims', () => route('Mobile Attendance Offline Claim'));
       button(body, 'Manage workplaces', () => route('Mobile Attendance Workplace'));
+      button(body, 'Company test policies', () => route('Mobile Attendance Company Policy'));
       $('<p class="text-muted mt-3"></p>').text(__('Open a device to approve or revoke it. Open an offline claim to inspect its photo and GPS, then approve or reject with a reason. Another HR reviewer must review their own device or claim. Counts follow your record access permissions.')).appendTo(body);
     } catch (_) {
       if (request !== generation) return;

@@ -84,7 +84,7 @@ def submit(employee, request, device_secret):
     except (ValueError, TypeError, OverflowError, OSError): frappe.throw('Invalid offline claim.', frappe.ValidationError)
     user = frappe.session.user
     current = lock_employee(employee['name'], user)
-    config = attendance.settings()
+    config = attendance.settings(employee["name"])
     if not enabled(employee['name'], config):
         frappe.throw('Offline test submission is disabled.', frappe.PermissionError)
     registration = require_approved(employee, payload['device_id'], device_secret)
@@ -149,7 +149,7 @@ def review(request_id, decision, reason):
         if doc.status != decision: frappe.throw('This review is already final.', frappe.ValidationError)
         return reply(doc.as_dict(), True)
     if decision == 'Approved':
-        config = attendance.settings()
+        config = attendance.settings(doc.employee)
         if str(config.get('require_test_photo', 0)) == '1' and not doc.get('punch_photo'):
             frappe.throw('Photo evidence is missing. Reject and arrange a manual correction.', frappe.ValidationError)
         if not current or current['user_id'] != doc.user or current['status'] != 'Active' or not frappe.db.get_value('User', doc.user, 'enabled') or 'Employee' not in frappe.get_roles(doc.user) or not enabled(doc.employee, config):

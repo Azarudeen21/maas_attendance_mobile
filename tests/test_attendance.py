@@ -232,3 +232,21 @@ class AttendanceTests(unittest.TestCase):
             self.base.api.punch(**self.args, employee='OTHER')
         with self.assertRaises(TypeError):
             self.base.api.punch(**self.args, skip_auto_attendance=0)
+
+    def test_company_policy_applies_to_status_and_punch_and_denies_other_employee(self):
+        original = self.get_value
+        row = {'enabled': 1, 'test_employee': self.employee['name'], 'enable_offline_test': 0}
+        self.config.update(use_company_test_policies=1, test_employee='LEGACY')
+        self.frappe.db.get_value.side_effect = lambda dt, name, field, **kw: row if dt == 'Mobile Attendance Company Policy' else original(dt, name, field, **kw)
+        self.assertTrue(self.service.status(self.employee)['online_test_submission_enabled'])
+        self.assertFalse(self.submit()['duplicate'])
+        row['test_employee'] = 'OTHER'
+        self.assertFalse(self.service.status(self.employee)['online_test_submission_enabled'])
+        with self.assertRaises(test_api.FakePermissionError):
+            self.submit()
+
+    def test_disabled_company_test_login_cannot_use_standard_checkin_route(self):
+        self.config.update(use_company_test_policies=1, test_employee=None)
+        self.frappe.get_all.return_value = [{'test_employee': self.employee['name']}]
+        with self.assertRaises(test_api.FakePermissionError):
+            self.service.guard_checkin(types.SimpleNamespace(employee='OTHER', is_new=lambda: True))

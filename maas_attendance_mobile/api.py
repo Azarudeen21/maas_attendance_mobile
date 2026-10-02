@@ -82,7 +82,7 @@ def capabilities():
         "versions": versions,
         "employee_checkin_fields": [field for field in candidates if meta.has_field(field)],
         "attendance_submission_enabled": False,
-        "online_test_submission_enabled": enabled_for(employee["name"], settings()),
+        "online_test_submission_enabled": enabled_for(employee["name"], settings(employee["name"])),
         "test_mode": True,
         "offline_submission_enabled": False,
         "offline_test_claims_supported": True,

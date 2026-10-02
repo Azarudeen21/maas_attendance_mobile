@@ -1,6 +1,6 @@
 # MAAS Attendance Mobile — Frappe app
 
-Version 0.9.0 adds customer-site mobile onboarding with public PKCE setup.
+Version 0.10.0 adds customer-site mobile onboarding with public PKCE setup.
 Version 0.8.0 added an HR control screen and stronger settings validation.
 Version 0.7.0 added private punch photos with GPS and the original button time,
 without face recognition or liveness. It also includes offline test claims with explicit HR review, alongside
@@ -43,7 +43,7 @@ sessions both use the server session identity. Paths below are prefixed by
 - GET hr_overview: permission-scoped counts and policy for HR/System Managers.
 - GET mobile_setup: opt-in guest-readable public client ID/label only.
 
-## Customer site connections (v0.9.0)
+## Customer site connections (v0.10.0)
 
 Install this package separately on each supported ERPNext/HRMS site. As System
 Manager configure an OAuth Client: Authorization Code grant, Code response,
@@ -326,7 +326,7 @@ These tests mock Frappe and verify pure rules/service contracts. They do not
 prove database rollback, locks, hook dispatch, OAuth middleware or installation.
 Live test-site checks for this revision:
 
-1. Gate disabled: app_version 0.9.0, test flag false, status readable only by
+1. Gate disabled: app_version 0.10.0, test flag false, status readable only by
    authenticated linked employee. Guests reject without employee details.
 2. Enable only Mobile Test. Fresh IN creates one standard checkin + receipt,
    correct employee/local time and Skip Auto Attendance checked.
@@ -344,3 +344,15 @@ Live test-site checks for this revision:
    requirements in supervised tests, including revoked-device retry rejection.
 9. Disable both test gates after tests. History and offline test claim review
    are implemented; face verification, production policy and release hardening remain future phases.
+
+## Company test policies (v0.10.0)
+
+Use Company Test Policies defaults off. In this opt-in mode, configure one
+Mobile Attendance Company Policy per company with a dedicated eligible test
+employee. Company is derived from Employee on the server. Missing or disabled
+company policies never fall back to the legacy employee. Site online/offline
+switches remain global gates; site photo/GPS/device flags remain minimums.
+Company rules can strengthen them. HR Manager reads policy records; System
+Manager edits them. These remain test policies: all punches skip automatic
+attendance and offline claims require HR review. Migrate an isolated test site
+before enabling this mode. Production eligibility remains a future stage.

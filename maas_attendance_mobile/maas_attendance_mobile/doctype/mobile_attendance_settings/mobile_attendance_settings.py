@@ -18,6 +18,15 @@ class MobileAttendanceSettings(Document):
             frappe.throw('Enable the online test policy before enabling offline claims.')
         if not online:
             return
+        if self.get('use_company_test_policies') in (1, '1', True):
+            from maas_attendance_mobile.company_policy import validate_employee, validate_workplaces
+            policies = frappe.get_all('Mobile Attendance Company Policy', filters={'enabled': 1},
+                fields=['company', 'test_employee', 'require_test_location'])
+            for policy in policies:
+                validate_employee(policy['test_employee'], policy['company'])
+                if self.get('require_test_location') in (1, '1', True) or str(policy['require_test_location']) == '1':
+                    validate_workplaces(policy['company'])
+            return
         row = frappe.db.get_value('Employee', self.test_employee, ['status', 'user_id'], as_dict=True) if self.test_employee else None
         if not row or row.status != 'Active' or not row.user_id:
             frappe.throw('Select an active test employee linked to an enabled Employee login.')
