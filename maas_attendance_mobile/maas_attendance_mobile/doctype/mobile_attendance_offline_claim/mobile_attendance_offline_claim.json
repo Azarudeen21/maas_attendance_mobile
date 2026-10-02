@@ -1,0 +1,131 @@
+{
+  "module": "MAAS Attendance Mobile",
+  "field_order": [
+    "request_id",
+    "employee",
+    "user",
+    "registered_device",
+    "log_type",
+    "event_time",
+    "status",
+    "checkin",
+    "reviewed_by",
+    "reviewed_at",
+    "review_reason",
+    "request_hash",
+    "payload_json"
+  ],
+  "doctype": "DocType",
+  "sort_order": "ASC",
+  "name": "Mobile Attendance Offline Claim",
+  "permissions": [
+    {
+      "role": "System Manager",
+      "read": 1
+    },
+    {
+      "role": "HR Manager",
+      "read": 1
+    }
+  ],
+  "sort_field": "event_time",
+  "engine": "InnoDB",
+  "fields": [
+    {
+      "fieldname": "request_id",
+      "read_only": 1,
+      "fieldtype": "Data",
+      "unique": 1,
+      "label": "Request ID",
+      "reqd": 1
+    },
+    {
+      "fieldname": "employee",
+      "read_only": 1,
+      "options": "Employee",
+      "fieldtype": "Link",
+      "in_list_view": 1,
+      "label": "Employee"
+    },
+    {
+      "read_only": 1,
+      "fieldname": "user",
+      "options": "User",
+      "label": "User",
+      "fieldtype": "Link"
+    },
+    {
+      "read_only": 1,
+      "fieldname": "registered_device",
+      "options": "Mobile Attendance Device",
+      "label": "Registered Device",
+      "fieldtype": "Link"
+    },
+    {
+      "fieldname": "log_type",
+      "read_only": 1,
+      "options": "IN\nOUT",
+      "fieldtype": "Select",
+      "in_list_view": 1,
+      "label": "Log Type"
+    },
+    {
+      "in_list_view": 1,
+      "read_only": 1,
+      "fieldname": "event_time",
+      "label": "Original Site Time",
+      "fieldtype": "Datetime"
+    },
+    {
+      "fieldname": "status",
+      "read_only": 1,
+      "options": "Pending Review\nApproved\nRejected",
+      "default": "Pending Review",
+      "fieldtype": "Select",
+      "in_list_view": 1,
+      "label": "Status",
+      "reqd": 1
+    },
+    {
+      "read_only": 1,
+      "fieldname": "checkin",
+      "options": "Employee Checkin",
+      "label": "Checkin",
+      "fieldtype": "Link"
+    },
+    {
+      "read_only": 1,
+      "fieldname": "reviewed_by",
+      "options": "User",
+      "label": "Reviewed By",
+      "fieldtype": "Link"
+    },
+    {
+      "read_only": 1,
+      "fieldname": "reviewed_at",
+      "label": "Reviewed At",
+      "fieldtype": "Datetime"
+    },
+    {
+      "read_only": 1,
+      "fieldname": "review_reason",
+      "label": "Review Reason",
+      "fieldtype": "Small Text"
+    },
+    {
+      "hidden": 1,
+      "read_only": 1,
+      "fieldname": "request_hash",
+      "label": "Request Hash",
+      "fieldtype": "Data"
+    },
+    {
+      "read_only": 1,
+      "fieldname": "payload_json",
+      "label": "Original Evidence",
+      "fieldtype": "Long Text"
+    }
+  ],
+  "autoname": "field:request_id",
+  "track_changes": 1
+}

@@ -4,6 +4,8 @@ from frappe.model.document import Document
 
 class MobileAttendanceSettings(Document):
     def validate(self):
+        if self.get('enable_offline_test') and not self.enable_test_attendance:
+            frappe.throw('Enable the online test policy before enabling offline claims.')
         if not self.enable_test_attendance:
             return
         row = frappe.db.get_value('Employee', self.test_employee, ['status', 'user_id'], as_dict=True) if self.test_employee else None

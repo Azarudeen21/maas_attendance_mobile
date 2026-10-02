@@ -1,7 +1,7 @@
 # MAAS Attendance Mobile — Frappe app
 
-Version 0.5.0 adds employee check-in history with pagination, alongside device
-approval/revocation and optional server GPS workplace checks.
+Version 0.6.0 adds offline test claims with explicit HR review, alongside
+employee check-in history, device approval and server GPS workplace checks.
 Authentication, profile and basic online test punches were
 verified on the v16 test site. This release requires migration and live GPS
 policy validation. It is not a complete production attendance app.
@@ -34,6 +34,56 @@ sessions both use the server session identity. Paths below are prefixed by
 - POST punch: allowlisted online test IN/OUT only.
 - POST register_device: register the current employee's installation as Pending.
 - POST device_status: verify credentials and return approval status.
+- POST submit_offline_claim: immutable delayed claim from an approved device.
+- GET offline_claim_status: own request UUID's review state, without evidence.
+- POST review_offline_claim: HR Manager/System Manager approves or rejects with a reason.
+
+## Offline test claims (v0.6.0)
+
+Enable Offline Test Claims defaults off and requires the online test policy
+and dedicated test employee. An approved installation credential is always
+required for upload, even if online approved-device enforcement is off.
+The native app prepares while connected, caching next IN/OUT, the current
+check-in reference, GPS policy and approved installation ID for at most 24
+hours. During that signed-in session the user can explicitly save up to 20
+offline events. Original UUID/time/GPS/predecessor are saved in secure storage
+before upload; the installation secret remains in the separate credential vault.
+There is no background capture or automatic background sync.
+
+Uploads must arrive within 24 hours and no more than two minutes in the future.
+GPS samples are compared to their original event time and current configured
+company workplaces. Delayed phone time/GPS remain untrusted claims. Exact
+retries recover the original review record; altered payloads cannot reuse an ID.
+Pending backlog is limited to 100 records per employee. An offline claim and
+an online receipt cannot deliberately reuse an existing request UUID.
+
+Uploading creates only a Mobile Attendance Offline Claim in Pending Review.
+HR opens this record and uses Approve test claim or Reject claim, with a reason.
+Self-review is forbidden. Approval rechecks employee eligibility, enabled test
+policy, original device approval, workplace rules and current attendance order.
+The latest check-in must match the original base check-in or the approved
+predecessor claim's check-in. Intervening activity or an unapproved predecessor
+blocks approval. HR can reject conflicts and make a separate manual correction.
+Approval creates one test Employee Checkin with skip_auto_attendance=1 and
+stores reviewer/reason/time atomically. Reviews and original evidence cannot
+be edited or deleted through normal ORM routes. Explicit HR review can occur
+after the upload window; it is not an automatic delayed punch acceptance.
+
+The app syncs serially, looks up each UUID before upload, persists progress
+after each receipt and retains remaining events on failure. Review states are
+refreshed while connected. Unresolved offline events block new online punches
+on this installation. Another installation or an HR edit can still introduce
+a conflict, which the server detects during review. For an expired unuploaded
+queue, the user may explicitly discard only after a connected lookup confirms
+every queued event is absent from the server. Discarded events create no checkin;
+uploaded claims require HR review. A bounded local archive retains final events.
+
+Authentication must be established online. Saved queues survive restart/sign-out,
+but a cold start while disconnected cannot restore a verified account yet.
+Offline capture is currently limited to a prepared, already signed-in session.
+Live migration, database locking, secure-storage persistence and real device
+GPS checks remain checkpoints. This is a test workflow, not production offline
+attendance or protection against a compromised phone/clock.
 
 ## Employee check-in history (v0.5.0)
 
@@ -101,8 +151,8 @@ Exact retry hashes include GPS and return the original result without requiring
 a new GPS sample or rechecking a changed workplace. The test gate still applies.
 
 These rules validate reported coordinates. They do not establish spoof-proof
-physical presence. Face verification, offline sync and
-production attendance policies remain pending. The standalone GPS diagnostic
+physical presence. Face verification and production attendance policies remain
+pending. Offline test claims use the separate HR review workflow above. The standalone GPS diagnostic
 card remains local-only; the location attached to an enabled GPS punch is sent
 to ERPNext. Do not configure emulator coordinates as a real workplace.
 
@@ -149,6 +199,8 @@ the dedicated Mobile Test employee and enable for supervised tests.
 attendance_submission_enabled, offline_submission_enabled and
 face_verification_enabled always remain false. Only
 online_test_submission_enabled can become true for the selected employee.
+attendance_status additionally exposes offline_test_submission_enabled when
+the separate offline claim gate is enabled. It never enables automatic offline attendance.
 
 Every service-created standard Employee Checkin has Skip Auto Attendance = 1
 and a MAAS-TEST installation ID. HRMS validations still execute. HR Settings
@@ -156,7 +208,7 @@ requiring location may reject GPS-free tests; do not disable HR security policy
 to force a test through. The service converts the ORIGINAL offset-bearing
 instant to site timezone at second resolution (Asia/Riyadh on verified site).
 New online events may be at most 15 minutes old or 2 minutes ahead; offline
-queue acceptance is not implemented. With no history, IN is required first; then IN/OUT
+events use the separate claim/review API. With no history, IN is required first; then IN/OUT
 alternate. Equal/older times and latest logs without IN/OUT fail closed.
 State uses standard Employee Checkin history: avoid simultaneous manual HR
 edits for the dedicated test employee during these tests.
@@ -184,7 +236,7 @@ These tests mock Frappe and verify pure rules/service contracts. They do not
 prove database rollback, locks, hook dispatch, OAuth middleware or installation.
 Live test-site checks for this revision:
 
-1. Gate disabled: app_version 0.4.0, test flag false, status readable only by
+1. Gate disabled: app_version 0.6.0, test flag false, status readable only by
    authenticated linked employee. Guests reject without employee details.
 2. Enable only Mobile Test. Fresh IN creates one standard checkin + receipt,
    correct employee/local time and Skip Auto Attendance checked.
@@ -200,5 +252,5 @@ Live test-site checks for this revision:
    standard checkin nor receipt commits. This is not proven by a mocked test.
 8. GPS/device requirements default off. Configure and exercise both optional
    requirements in supervised tests, including revoked-device retry rejection.
-9. Disable the gate after tests. Face verification, offline sync, history,
-   production policy and release hardening remain future phases.
+9. Disable both test gates after tests. History and offline test claim review
+   are implemented; face verification, production policy and release hardening remain future phases.

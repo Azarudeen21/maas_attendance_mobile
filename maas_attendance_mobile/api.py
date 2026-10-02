@@ -79,6 +79,7 @@ def capabilities():
         "online_test_submission_enabled": enabled_for(employee["name"], settings()),
         "test_mode": True,
         "offline_submission_enabled": False,
+        "offline_test_claims_supported": True,
         "face_verification_enabled": False,
         "device_registration_enabled": True,
     }
@@ -113,3 +114,21 @@ def device_status(device_id, device_secret):
 def attendance_history(cursor=None):
     from maas_attendance_mobile.history import page
     return page(_linked_employee(), cursor)
+
+
+@frappe.whitelist(methods=['POST'])
+def submit_offline_claim(request, device_secret):
+    from maas_attendance_mobile.offline import submit
+    return submit(_linked_employee(), request, device_secret)
+
+
+@frappe.whitelist(methods=['GET'])
+def offline_claim_status(request_id):
+    from maas_attendance_mobile.offline import own_status
+    return own_status(_linked_employee(), request_id)
+
+
+@frappe.whitelist(methods=['POST'])
+def review_offline_claim(request_id, decision, reason):
+    from maas_attendance_mobile.offline import review
+    return review(request_id, decision, reason)

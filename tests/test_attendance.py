@@ -27,7 +27,7 @@ class AttendanceTests(unittest.TestCase):
         self.config = {'enable_test_attendance': '1', 'test_employee': self.employee['name']}
         self.frappe.db.get_singles_dict.return_value = self.config
         self.frappe.flags = Flags()
-        self.frappe.db.exists = Mock(return_value=True)
+        self.frappe.db.exists = Mock(side_effect=lambda doctype, name: doctype == 'Employee Checkin')
         self.frappe.db.commit = Mock()
         self.latest = None
         self.receipt = None
@@ -221,6 +221,7 @@ class AttendanceTests(unittest.TestCase):
 
     def test_deleted_original_receipt_fails_without_recreating(self):
         self.receipt = self.saved_receipt()
+        self.frappe.db.exists.side_effect = None
         self.frappe.db.exists.return_value = False
         with self.assertRaises(ValueError):
             self.submit()

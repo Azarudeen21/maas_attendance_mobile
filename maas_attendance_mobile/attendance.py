@@ -37,6 +37,7 @@ def latest_checkin(employee, *, lock=False):
 def status(employee):
     config = settings()
     latest = latest_checkin(employee["name"])
+    from maas_attendance_mobile.offline import enabled
     return {
         "api_version": 1, "test_mode": True,
         "online_test_submission_enabled": enabled_for(employee["name"], config),
@@ -46,6 +47,7 @@ def status(employee):
         "skip_auto_attendance": True,
         "location_required": str(config.get("require_test_location", 0)) == "1",
         "approved_device_required": str(config.get("require_approved_device", 0)) == "1",
+        "offline_test_submission_enabled": enabled(employee['name'], config),
     }
 
 
@@ -95,6 +97,9 @@ def submit(employee, request_id, log_type, timestamp, device_id, app_version, lo
             frappe.throw("This request ID was already used for a different punch.", frappe.ValidationError)
         # A lost-response retry works even after the online freshness window.
         return _reply(receipt, True)
+
+    if frappe.db.exists('Mobile Attendance Offline Claim', request_id):
+        frappe.throw('This request ID already belongs to an offline claim.', frappe.ValidationError)
 
     gps = None
     if str(config.get("require_test_location", 0)) == "1":
