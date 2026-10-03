@@ -19,7 +19,11 @@ def overview():
     # get_list preserves normal role and User Permission restrictions. Never
     # aggregate with get_all/db.count, which could reveal inaccessible records.
     def count(doctype, filters):
-        rows = frappe.get_list(doctype, filters=filters, fields=['count(name) as total'])
+        # v16 rejects SQL function strings; v15 uses the legacy syntax.
+        fields = ([{'COUNT': 'name', 'as': 'total'}]
+                  if int(frappe.__version__.split('.')[0]) >= 16
+                  else ['count(name) as total'])
+        rows = frappe.get_list(doctype, filters=filters, fields=fields)
         return int(rows[0]['total']) if rows else 0
     return {
         'api_version': 1, 'app_version': __version__, 'test_mode': True, 'production_supported': True,

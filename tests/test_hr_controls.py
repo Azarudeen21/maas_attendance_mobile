@@ -39,7 +39,17 @@ class HROverviewTests(unittest.TestCase):
         self.assertEqual(data['counts']['pending_claims'], 3)
         self.assertEqual(len(self.frappe.get_list.call_args_list), 4)
         claim_call = self.frappe.get_list.call_args_list[2]
-        self.assertEqual(claim_call.kwargs, {'filters': {'status': 'Pending Review'}, 'fields': ['count(name) as total']})
+        self.assertEqual(claim_call.kwargs, {'filters': {'status': 'Pending Review'}, 'fields': [{'COUNT': 'name', 'as': 'total'}]})
+
+    def test_v15_uses_legacy_count_without_bypassing_permissions(self):
+        self.frappe.__version__ = '15.80.0'
+        self.service.overview()
+        self.assertEqual(self.frappe.get_list.call_args_list[2].kwargs,
+                         {'filters': {'status': 'Pending Review'}, 'fields': ['count(name) as total']})
+
+    def test_empty_permission_scoped_results_return_zero(self):
+        self.frappe.get_list.return_value = []
+        self.assertEqual(set(self.service.overview()['counts'].values()), {0})
 
     def test_permission_denial_propagates_and_system_manager_edit_flag(self):
         self.config.check_permission.side_effect = test_api.FakePermissionError()

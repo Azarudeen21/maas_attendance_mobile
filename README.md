@@ -412,8 +412,15 @@ a `maas-attendance-integration.` site name or the explicitly authorized developm
 site `erpnextconsult.m.frappe.cloud`. Never enable that flag on a customer or real
 production site. After migration, run:
 `bench --site SITE run-tests --module maas_attendance_mobile.test_database_integration`.
-Remove the opt-in flag afterwards. HTTP/OAuth, concurrent requests, photo storage,
-shift processing and physical-device delivery still need separate verification.
+Remove the opt-in flag afterwards. HTTP/OAuth, concurrent requests, finalized
+daily Attendance and physical-device delivery still need separate verification.
 
-Local verification: 139 mocked Python contract tests pass. The five real database
-tests are prepared but have not yet run on Frappe Cloud.
+Development site verification on 2026-10-03: all five real database tests passed
+on Frappe 16.36.1 / ERPNext 16.37.0 / HRMS 16.20.1 with backend 0.12.1.
+Original four checkins, settings and fixture counts were preserved after rollback.
+Additional private-photo/GPS protection, outside-workplace rejection and employee
+default-shift resolution checks passed. These do not prove automatic Attendance
+processing or native background delivery. Backend 0.12.2 fixes the v16 HR overview
+aggregate syntax while retaining permission-scoped queries and v15 compatibility.
+141 mocked Python contract tests and seven HR UI tests pass; v15 has not been
+verified against a real database.
