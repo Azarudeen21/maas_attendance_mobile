@@ -395,3 +395,25 @@ Local checks: 133 mocked Python contract tests, 7 HR UI tests and 121 Flutter
 tests pass. Real migration, SQL locks/rollback, protected File override, shift
 processing and customer permissions require an isolated HRMS site pilot. Do not
 enable production or cleanup solely on the basis of these unit tests.
+
+## Deployment diagnostics and database verification (v0.12.1)
+
+Run the read-only diagnostics after migrating:
+`bench --site SITE execute maas_attendance_mobile.integration_checks.preflight`.
+It checks installed apps, schema field types, File protection, scheduler hook
+configuration and disabled submission gates. A passing preflight does not
+establish production readiness or prove scheduler execution.
+
+The database suite uses temporary synthetic fixtures and rolls back each test;
+fixture commits are rejected. It covers online retry/IN/OUT, failed receipt
+rollback, direct-write protection, revoked devices and offline HR approval.
+It requires the `maas_attendance_integration_tests` site-config flag and either
+a `maas-attendance-integration.` site name or the explicitly authorized development
+site `erpnextconsult.m.frappe.cloud`. Never enable that flag on a customer or real
+production site. After migration, run:
+`bench --site SITE run-tests --module maas_attendance_mobile.test_database_integration`.
+Remove the opt-in flag afterwards. HTTP/OAuth, concurrent requests, photo storage,
+shift processing and physical-device delivery still need separate verification.
+
+Local verification: 139 mocked Python contract tests pass. The five real database
+tests are prepared but have not yet run on Frappe Cloud.
