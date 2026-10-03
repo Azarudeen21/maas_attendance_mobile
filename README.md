@@ -424,3 +424,26 @@ processing or native background delivery. Backend 0.12.2 fixes the v16 HR overvi
 aggregate syntax while retaining permission-scoped queries and v15 compatibility.
 141 mocked Python contract tests and seven HR UI tests pass; v15 has not been
 verified against a real database.
+
+## Automatic production offline acceptance (v0.13.0)
+
+Company policies now include **Automatically Accept Valid Production Offline
+Punches**, disabled by default. Enable it only with production online/offline
+gates, employee enrollment, an approved device, required photo evidence and
+workplace GPS. Existing deployments retain manual review until this company
+option is deliberately enabled. Test claims always need HR review.
+
+With this option, a valid upload creates a standard Employee Checkin at the
+original button time and returns an Approved receipt. The immutable offline
+claim retains its private photo, GPS and an Automatically Accepted marker;
+it does not impersonate a human reviewer. Ordered IN/OUT claims must use the
+same device and attendance mode and an accepted predecessor. Exact retries
+return the existing result. Changed attendance or invalid sequencing leaves
+valid evidence pending for HR; database/storage errors fail the transaction
+and the phone retains its queued event for retry. Automatic acceptance does
+not prove identity or finalize a daily Attendance record.
+
+The 24-hour upload/preparation window and 20-event mobile capacity remain.
+Two additional guarded SQL tests cover automatic photo IN/OUT/retry and
+conflict evidence preservation. These new cases still require real database
+execution before release; the earlier five SQL cases passed on v0.12.1.

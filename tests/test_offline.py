@@ -45,9 +45,13 @@ class OfflineTests(unittest.TestCase):
         doc = self.context.get_doc(value)
         if value['doctype'] == self.service.CLAIM:
             for key, item in value.items(): setattr(doc, key, item)
+            doc.reviewed_by = None
+            doc.automatically_accepted = 0
+            doc.sync_note = None
             doc.user = 'employee@example.test'
             doc.get.side_effect = lambda key, default=None: value.get(key, default)
-            doc.as_dict.side_effect = lambda: dict(value, name=doc.name, status=doc.status, checkin=doc.checkin)
+            doc.as_dict.side_effect = lambda: dict(value, name=doc.name, status=doc.status, checkin=doc.checkin,
+                automatically_accepted=getattr(doc, 'automatically_accepted', 0), sync_note=getattr(doc, 'sync_note', None))
             doc.save.return_value = doc
             self.doc = doc
         return doc
@@ -153,7 +157,7 @@ class OfflineTests(unittest.TestCase):
         previous = 'ea1ffca1-c4b3-483e-b82e-911f46aa9be7'
         self.request.update(previous_request_id=previous, log_type='OUT')
         self.submit(); self.reviewer()
-        self.prior = {'name': previous, 'employee': self.context.employee['name'], 'user': 'employee@example.test', 'status': 'Approved', 'checkin': 'FIRST'}
+        self.prior = {'name': previous, 'employee': self.context.employee['name'], 'user': 'employee@example.test', 'status': 'Approved', 'checkin': 'FIRST', 'registered_device': 'REGISTERED', 'test_mode': 1}
         event = datetime.fromisoformat(self.request['timestamp'])
         from maas_attendance_mobile.punch_rules import site_time
         self.context.latest = {'name': 'FIRST', 'log_type': 'IN', 'time': site_time(event - timedelta(minutes=5), 'Asia/Riyadh')}

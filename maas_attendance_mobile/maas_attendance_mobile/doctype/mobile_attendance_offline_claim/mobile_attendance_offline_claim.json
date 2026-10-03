@@ -24,7 +24,9 @@
     "photo_removed_at",
     "photo_cleanup",
     "test_mode",
-    "event_company"
+    "event_company",
+    "automatically_accepted",
+    "sync_note"
   ],
   "doctype": "DocType",
   "sort_order": "ASC",
@@ -208,6 +210,19 @@
       "read_only": 1,
       "options": "Company",
       "fieldtype": "Link"
+    },
+    {
+      "fieldtype": "Check",
+      "read_only": 1,
+      "fieldname": "automatically_accepted",
+      "label": "Automatically Accepted",
+      "default": "0"
+    },
+    {
+      "fieldtype": "Small Text",
+      "read_only": 1,
+      "fieldname": "sync_note",
+      "label": "Sync Result"
     }
   ],
   "autoname": "field:request_id",

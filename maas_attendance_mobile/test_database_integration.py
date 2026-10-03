@@ -133,3 +133,88 @@ class TestAttendanceDatabase(unittest.TestCase):
         self.assertEqual(checkin.time, row.event_time.replace(microsecond=0))
         self.assertEqual(checkin.skip_auto_attendance, 0)
         self.assertFalse(approved['test_mode'])
+
+    def prepare_automatic_offline(self):
+        frappe.set_user('Administrator')
+        frappe.get_doc({'doctype': 'Mobile Attendance Workplace',
+            'workplace_name': 'Integration ' + uuid4().hex[:8], 'company': self.company,
+            'enabled': 1, 'latitude': 24.7136, 'longitude': 46.6753,
+            'radius_m': 100, 'max_accuracy_m': 20}).insert()
+        policy = frappe.get_doc('Mobile Attendance Company Policy', self.company)
+        policy.production_require_photo = policy.production_require_location = 1
+        policy.production_auto_accept_offline = 1
+        policy.save()
+        self.generated_photo_ids = set()
+        self.addCleanup(self.remove_generated_claim_photos)
+        frappe.set_user(self.user)
+
+    def photo_claim(self, *, event=None, previous=None, log_type='IN'):
+        import base64, io
+        from PIL import Image
+        event = event or self.event
+        stream = io.BytesIO()
+        Image.frombytes('RGB', (160, 160), secrets.token_bytes(160 * 160 * 3)).save(stream, format='JPEG')
+        request_id = str(uuid4())
+        self.generated_photo_ids.add(request_id)
+        captured = event + timedelta(seconds=1)
+        return {'request_id': request_id, 'log_type': log_type, 'timestamp': event.isoformat(),
+            'device_id': self.device_id, 'app_version': 'integration-0.13',
+            'base_checkin': None, 'previous_request_id': previous, 'attendance_mode': 'production',
+            'photo': {'image_base64': base64.b64encode(stream.getvalue()).decode(), 'captured_at': captured.isoformat()},
+            'location': {'latitude': 24.7136, 'longitude': 46.6753, 'accuracy_m': 5,
+                'precise': True, 'is_mocked': False, 'timestamp': captured.isoformat()}}
+
+    def remove_generated_claim_photos(self):
+        """Remove only this fixture's random JPEG bytes before SQL rollback."""
+        import os
+        frappe.set_user('Administrator')
+        for request_id in self.generated_photo_ids:
+            for row in frappe.get_all('File', filters={'attached_to_doctype': offline.CLAIM,
+                    'attached_to_name': request_id}, fields=['name']):
+                file = frappe.get_doc('File', row.name)
+                if not file.is_private or not file.file_name.startswith('maas-punch-' + request_id):
+                    raise RuntimeError('Refuse cleanup of unexpected evidence')
+                context = frappe.flags.get('maas_photo_delete')
+                frappe.flags.maas_photo_delete = {'doctype': offline.CLAIM, 'name': request_id,
+                    'file': file.name, 'url': file.file_url}
+                try:
+                    path = file.get_full_path()
+                    frappe.delete_doc('File', file.name, ignore_permissions=True)
+                    self.assertFalse(os.path.isfile(path))
+                finally: frappe.flags.maas_photo_delete = context
+
+    def test_automatic_offline_photo_in_out_and_retry_preserve_evidence(self):
+        self.prepare_automatic_offline()
+        first_payload = self.photo_claim()
+        first = offline.submit(self.employee, first_payload, self.device_secret)
+        self.assertEqual(first['status'], 'Approved'); self.assertTrue(first['automatically_accepted'])
+        self.assertEqual(offline.submit(self.employee, first_payload, self.device_secret)['checkin'], first['checkin'])
+        second_payload = self.photo_claim(event=self.event + timedelta(seconds=4),
+            previous=first_payload['request_id'], log_type='OUT')
+        second = offline.submit(self.employee, second_payload, self.device_secret)
+        self.assertEqual(second['status'], 'Approved'); self.assertTrue(second['automatically_accepted'])
+        self.assertEqual(frappe.db.count('Employee Checkin', {'employee': self.employee.name}), 2)
+        for payload, response in ((first_payload, first), (second_payload, second)):
+            row = frappe.get_doc(offline.CLAIM, payload['request_id'])
+            checkin = frappe.get_doc('Employee Checkin', response['checkin'])
+            self.assertTrue(row.punch_photo.startswith('/private/files/'))
+            self.assertEqual(row.photo_company, self.company)
+            self.assertIsNone(row.reviewed_by)
+            self.assertEqual(checkin.time, row.event_time.replace(microsecond=0))
+            self.assertEqual(checkin.skip_auto_attendance, 0)
+            self.assertEqual(frappe.db.count('File', {'attached_to_doctype': offline.CLAIM,
+                'attached_to_name': row.name}), 1)
+        self.assertIsNone(frappe.flags.get('maas_offline_auto_accept'))
+
+    def test_automatic_offline_conflict_preserves_private_photo_for_hr(self):
+        self.prepare_automatic_offline()
+        newer = self.photo_claim(event=self.event + timedelta(seconds=4))
+        self.assertEqual(offline.submit(self.employee, newer, self.device_secret)['status'], 'Approved')
+        pending_payload = self.photo_claim()
+        response = offline.submit(self.employee, pending_payload, self.device_secret)
+        self.assertEqual(response['status'], 'Pending Review')
+        self.assertIsNone(response['checkin']); self.assertFalse(response['automatically_accepted'])
+        self.assertIn('Attendance changed', response['sync_note'])
+        self.assertEqual(frappe.db.count('Employee Checkin', {'employee': self.employee.name}), 1)
+        row = frappe.get_doc(offline.CLAIM, pending_payload['request_id'])
+        self.assertTrue(row.punch_photo.startswith('/private/files/'))

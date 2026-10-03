@@ -18,7 +18,7 @@ frappe.pages['maas-attendance-controls'].on_page_load = function(wrapper) {
       if (data?.api_version !== 1 || data.test_mode !== true) throw new Error('Invalid overview');
       body.empty();
       $('<div class="alert alert-info"></div>').text(data.production_supported
-        ? __('Production attendance requires employee enrollment, company/site gates and an approved device. Production punches feed normal ERPNext shift processing; test punches skip automatic attendance. Offline claims require HR approval. Photos do not verify identity or liveness.')
+        ? __('Production attendance requires employee enrollment, company/site gates and an approved device. Production punches feed normal ERPNext shift processing; test punches skip automatic attendance. Companies can enable automatic acceptance of valid production offline punches with photo and workplace GPS. Conflicts and test claims require HR review. Photos do not verify identity or liveness.')
         : __('Test attendance only. Every punch skips automatic attendance. Offline uploads require HR approval. Photos are evidence; face identity and liveness are not verified.')).appendTo(body);
       $('<h4></h4>').text(__('Current policy')).appendTo(body);
       $('<p></p>').text(data.policy.use_company_test_policies

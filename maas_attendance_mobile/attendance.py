@@ -55,6 +55,7 @@ def status(employee):
         "approved_device_required": str(config.get("require_approved_device", 0)) == "1",
         "offline_test_submission_enabled": enabled(employee['name'], config) and not config.get('production_mode', False),
         "offline_submission_enabled": enabled(employee['name'], config),
+        "offline_auto_accept_enabled": enabled(employee['name'], config) and bool(config.get('auto_accept_offline')),
         "photo_required": str(config.get('require_test_photo', 0)) == '1',
     }
 

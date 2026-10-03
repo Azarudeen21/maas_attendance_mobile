@@ -19,7 +19,8 @@
     "enable_production_attendance",
     "enable_production_offline",
     "production_require_photo",
-    "production_require_location"
+    "production_require_location",
+    "production_auto_accept_offline"
   ],
   "fields": [
     {
@@ -116,6 +117,13 @@
       "label": "Require Production Workplace GPS",
       "default": "1",
       "fieldtype": "Check"
+    },
+    {
+      "fieldtype": "Check",
+      "default": "0",
+      "description": "Creates checkins on reconnect using original time, photo and GPS. Requires approved device, photo and workplace checks. Conflicts stay pending for HR. Test claims always need review.",
+      "fieldname": "production_auto_accept_offline",
+      "label": "Automatically Accept Valid Production Offline Punches"
     }
   ],
   "permissions": [

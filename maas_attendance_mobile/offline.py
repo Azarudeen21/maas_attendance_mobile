@@ -1,4 +1,4 @@
-"""Offline test claims require explicit HR review; never auto-mark attendance."""
+"""Immutable offline evidence; opt-in production acceptance, HR review for conflicts."""
 import json
 from datetime import datetime, timedelta, timezone
 
@@ -53,14 +53,16 @@ def reply(row, duplicate=False):
     return {'api_version': 1, 'request_id': row['name'], 'status': row['status'],
             'checkin': row.get('checkin'), 'duplicate': duplicate,
             'test_mode': row.get('test_mode', 1) in (1, '1', True),
-            'skip_auto_attendance': row.get('test_mode', 1) in (1, '1', True)}
+            'skip_auto_attendance': row.get('test_mode', 1) in (1, '1', True),
+            'automatically_accepted': row.get('automatically_accepted', 0) in (1, '1', True),
+            'sync_note': row.get('sync_note')}
 
 
 def own_status(employee, request_id):
     try: uuid4_string(request_id)
     except ValueError: frappe.throw('Invalid request ID.', frappe.ValidationError)
     row = frappe.db.get_value(CLAIM, {'name': request_id, 'employee': employee['name'], 'user': frappe.session.user},
-        ['name', 'status', 'checkin', 'test_mode'], as_dict=True)
+        ['name', 'status', 'checkin', 'test_mode', 'automatically_accepted', 'sync_note'], as_dict=True)
     return reply(row) if row else {'api_version': 1, 'request_id': request_id, 'status': 'Not Found', 'checkin': None, 'duplicate': False, 'test_mode': True, 'skip_auto_attendance': True}
 
 
@@ -96,7 +98,7 @@ def submit(employee, request, device_secret):
     require_mode(config, payload.get('attendance_mode', 'test'))
     registration = require_approved(employee, payload['device_id'], device_secret)
     fingerprint = request_hash(payload, employee['name'], user)
-    old = frappe.db.get_value(CLAIM, payload['request_id'], ['name', 'employee', 'user', 'request_hash', 'status', 'checkin', 'test_mode'], as_dict=True, for_update=True)
+    old = frappe.db.get_value(CLAIM, payload['request_id'], ['name', 'employee', 'user', 'request_hash', 'status', 'checkin', 'test_mode', 'automatically_accepted', 'sync_note'], as_dict=True, for_update=True)
     if old:
         if old['employee'] != employee['name'] or old['user'] != user or old['request_hash'] != fingerprint:
             frappe.throw('Request ID already belongs to a different claim.', frappe.ValidationError)
@@ -131,8 +133,71 @@ def submit(employee, request, device_secret):
         if photo_bytes:
             from maas_attendance_mobile.photos import save_private
             save_private(CLAIM, doc.name, photo_bytes)
+            # Photo attachment/audit fields are written by the File service.
+            # Reload before a subsequent save so none are overwritten or differ
+            # from the immutable persisted evidence snapshot.
+            doc.reload()
     finally: frappe.flags.maas_offline_write = previous
+    if config.get('production_mode') and config.get('auto_accept_offline'):
+        # The employee/device/policy locks and evidence validation above remain
+        # in the same POST transaction as this checkin and final claim update.
+        local = site_time(event, get_system_timezone())
+        conflict = sequence_conflict(doc, payload, local)
+        if conflict:
+            doc.sync_note = conflict
+        else:
+            create_checkin(doc, payload, local, production=True)
+            from frappe.utils import now_datetime
+            doc.status = 'Approved'
+            doc.automatically_accepted = 1
+            doc.reviewed_at = now_datetime()
+            doc.sync_note = 'Automatically accepted with original capture time and evidence.'
+        previous_auto = frappe.flags.get('maas_offline_auto_accept')
+        previous_write = frappe.flags.get('maas_offline_write')
+        frappe.flags.maas_offline_write = doc.request_id
+        frappe.flags.maas_offline_auto_accept = doc.request_id
+        try: doc.save(ignore_permissions=True)
+        finally:
+            frappe.flags.maas_offline_auto_accept = previous_auto
+            frappe.flags.maas_offline_write = previous_write
     return reply(doc.as_dict())
+
+
+def sequence_conflict(doc, payload, local):
+    """Only expected ordering conflicts become pending; persistence errors escape."""
+    latest = attendance.latest_checkin(doc.employee, lock=True)
+    expected = payload['base_checkin']
+    if payload['previous_request_id']:
+        prior = frappe.db.get_value(CLAIM, payload['previous_request_id'],
+            ['employee', 'user', 'status', 'checkin', 'test_mode', 'registered_device'],
+            as_dict=True, for_update=True)
+        if (not prior or prior['employee'] != doc.employee or prior['user'] != doc.user
+                or prior['status'] != 'Approved' or not prior.get('checkin')
+                or prior.get('test_mode', 1) != doc.get('test_mode', 1)
+                or prior.get('registered_device') != doc.registered_device):
+            return 'Review the preceding offline claim first.'
+        expected = prior['checkin']
+    if (latest['name'] if latest else None) != expected:
+        return 'Attendance changed after capture. Resolve this conflict manually; the claim remains pending.'
+    try: check_transition(latest, payload['log_type'], local)
+    except ValueError as error: return str(error)
+    return None
+
+
+def create_checkin(doc, payload, local, *, production):
+    previous_context = frappe.flags.get('maas_test_punch')
+    frappe.flags.maas_test_punch = {'employee': doc.employee, 'user': frappe.session.user,
+        'request_id': doc.request_id, 'production': production}
+    try:
+        checkin = frappe.get_doc({'doctype': 'Employee Checkin', 'employee': doc.employee,
+            'log_type': payload['log_type'], 'time': local,
+            'device_id': ('MAAS-OFFLINE:' if production else 'MAAS-OFFLINE-TEST:') + payload['device_id'],
+            'skip_auto_attendance': int(not production),
+            **({'latitude': payload['location']['latitude'], 'longitude': payload['location']['longitude']}
+               if payload.get('location') else {})}).insert(ignore_permissions=True)
+        doc.checkin = checkin.name
+    finally:
+        frappe.flags.maas_test_punch = previous_context
 
 
 def review(request_id, decision, reason):
@@ -174,29 +239,9 @@ def review(request_id, decision, reason):
         event = datetime.fromisoformat(payload['timestamp_utc'].replace('Z', '+00:00'))
         from frappe.utils import get_system_timezone
         local = site_time(event, get_system_timezone())
-        latest = attendance.latest_checkin(doc.employee, lock=True)
-        expected = payload['base_checkin']
-        if payload['previous_request_id']:
-            prior = frappe.db.get_value(CLAIM, payload['previous_request_id'], ['employee', 'user', 'status', 'checkin'], as_dict=True, for_update=True)
-            if not prior or prior['employee'] != doc.employee or prior['user'] != doc.user or prior['status'] != 'Approved':
-                frappe.throw('Review the preceding offline claim first.', frappe.ValidationError)
-            expected = prior['checkin']
-        if (latest['name'] if latest else None) != expected:
-            frappe.throw('Attendance changed after capture. Resolve this conflict manually; the claim remains pending.', frappe.ValidationError)
-        try: check_transition(latest, payload['log_type'], local)
-        except ValueError as error: frappe.throw(str(error), frappe.ValidationError)
-        gps = gps_check(payload, event, current['company'], config)
-        previous_context = frappe.flags.get('maas_test_punch')
-        frappe.flags.maas_test_punch = {'employee': doc.employee, 'user': frappe.session.user,
-            'request_id': request_id, 'production': production}
-        try:
-            checkin = frappe.get_doc({'doctype': 'Employee Checkin', 'employee': doc.employee, 'log_type': payload['log_type'],
-                'time': local, 'device_id': ('MAAS-OFFLINE:' if production else 'MAAS-OFFLINE-TEST:') + payload['device_id'],
-                'skip_auto_attendance': int(not production),
-                **({'latitude': payload['location']['latitude'], 'longitude': payload['location']['longitude']} if gps or payload.get('photo') else {})}).insert(ignore_permissions=True)
-        finally:
-            frappe.flags.maas_test_punch = previous_context
-        doc.checkin = checkin.name
+        conflict = sequence_conflict(doc, payload, local)
+        if conflict: frappe.throw(conflict, frappe.ValidationError)
+        create_checkin(doc, payload, local, production=production)
     from frappe.utils import now_datetime
     doc.status, doc.reviewed_by, doc.reviewed_at, doc.review_reason = decision, frappe.session.user, now_datetime(), reason.strip()
     previous = frappe.flags.get('maas_offline_write')
