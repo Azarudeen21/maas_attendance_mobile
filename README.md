@@ -447,3 +447,27 @@ The 24-hour upload/preparation window and 20-event mobile capacity remain.
 Two additional guarded SQL tests cover automatic photo IN/OUT/retry and
 conflict evidence preservation. These new cases still require real database
 execution before release; the earlier five SQL cases passed on v0.12.1.
+
+
+## Unified employee attendance (v0.14.0 backend / v0.15.0 mobile)
+
+The employee home uses a single Check In / Check Out action online and offline.
+After initial sign-in and device registration the app refreshes its cached policy
+without an employee preparation step. Every new punch is saved durably before
+upload; original button time, private photo and GPS survive reconnects/restarts.
+Android network-constrained work and iOS processing tasks retry saved evidence;
+OS restrictions and force-stop can delay background delivery. No immediate
+closed-app-delivery guarantee is made.
+
+Cached account/policy and upload windows are seven days; the mobile queue allows
+100 active events within its existing 64 MB encrypted storage bound. Production
+automatic acceptance remains an explicit company policy with photo/workplace
+requirements. A separate default-off `auto_accept_test_offline` setting permits
+valid dedicated test claims with photo/GPS and approved device to autoaccept,
+while keeping Skip Auto Attendance=1. Changed ordering, device/company or mode
+is never silently accepted; failed evidence stays available for correction.
+
+Deploy and migrate the backend before installing the new mobile pilot build.
+Existing approved/pending claims remain immutable. Enable automatic test
+acceptance only on the dedicated development site; real production policy is
+configured separately for each customer company. No face verification is added.

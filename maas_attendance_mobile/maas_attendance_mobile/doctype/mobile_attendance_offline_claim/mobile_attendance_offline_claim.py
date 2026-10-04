@@ -10,8 +10,8 @@ class MobileAttendanceOfflineClaim(Document):
         automatic = frappe.flags.get('maas_offline_auto_accept') == self.request_id
         if self.get('automatically_accepted') in (1, '1', True) and not (
                 automatic and self.status == 'Approved' and self.checkin
-                and self.get('test_mode') in (0, '0', False) and not self.reviewed_by):
-            frappe.throw('Automatic acceptance is only allowed by production sync.', frappe.PermissionError)
+                and self.get('test_mode') in (0, '0', False, 1, '1', True) and not self.reviewed_by):
+            frappe.throw('Automatic acceptance is only allowed by attendance sync.', frappe.PermissionError)
         if not old:
             if self.status != 'Pending Review' or self.checkin or self.reviewed_by or self.reviewed_at or self.review_reason:
                 frappe.throw('New offline claims must await review.', frappe.ValidationError)

@@ -49,6 +49,7 @@ class TestAttendanceDatabase(unittest.TestCase):
             'company': self.company, 'enabled': 1}).insert()
         settings = frappe.get_single(attendance.SETTINGS)
         settings.update({'enable_test_attendance': 0, 'enable_offline_test': 0,
+            'auto_accept_test_offline': 0,
             'enable_production_attendance': 1, 'enable_production_offline': 1,
             'require_test_photo': 0, 'require_test_location': 0})
         settings.save()
@@ -218,3 +219,34 @@ class TestAttendanceDatabase(unittest.TestCase):
         self.assertEqual(frappe.db.count('Employee Checkin', {'employee': self.employee.name}), 1)
         row = frappe.get_doc(offline.CLAIM, pending_payload['request_id'])
         self.assertTrue(row.punch_photo.startswith('/private/files/'))
+
+    def test_automatic_test_offline_photo_pair_preserves_time_without_hr(self):
+        self.prepare_automatic_offline()
+        frappe.set_user('Administrator')
+        settings = frappe.get_single(attendance.SETTINGS)
+        settings.update({'enable_production_attendance': 0,
+            'enable_production_offline': 0, 'enable_test_attendance': 1,
+            'enable_offline_test': 1, 'auto_accept_test_offline': 1,
+            'require_test_photo': 1, 'require_test_location': 0,
+            'use_company_test_policies': 0, 'test_employee': self.employee.name})
+        settings.save()
+        frappe.set_user(self.user)
+        first_payload = self.photo_claim()
+        first_payload['attendance_mode'] = 'test'
+        first = offline.submit(self.employee, first_payload, self.device_secret)
+        second_payload = self.photo_claim(event=self.event + timedelta(seconds=4),
+            previous=first_payload['request_id'], log_type='OUT')
+        second_payload['attendance_mode'] = 'test'
+        second = offline.submit(self.employee, second_payload, self.device_secret)
+        self.assertEqual(frappe.db.count('Employee Checkin', {'employee': self.employee.name}), 2)
+        for payload, response in ((first_payload, first), (second_payload, second)):
+            self.assertEqual(response['status'], 'Approved')
+            self.assertTrue(response['automatically_accepted'])
+            row = frappe.get_doc(offline.CLAIM, payload['request_id'])
+            checkin = frappe.get_doc('Employee Checkin', response['checkin'])
+            self.assertEqual(checkin.time, row.event_time.replace(microsecond=0))
+            self.assertEqual(checkin.skip_auto_attendance, 1)
+            self.assertIsNone(row.reviewed_by)
+            self.assertTrue(row.punch_photo.startswith('/private/files/'))
+            self.assertEqual(offline.submit(self.employee, payload, self.device_secret)['checkin'], response['checkin'])
+        self.assertIsNone(frappe.flags.get('maas_offline_auto_accept'))

@@ -39,7 +39,7 @@ class OfflineControllerTests(unittest.TestCase):
         self.doc.before.status = 'Approved'
         with self.assertRaises(ValueError): self.doc.validate()
 
-    def test_auto_approval_cannot_be_forged_or_apply_to_test_mode(self):
+    def test_auto_approval_cannot_be_forged_or_change_immutable_mode(self):
         self.context.frappe.flags.maas_offline_write = self.doc.request_id
         self.doc.before = test_device_controller.Document()
         self.doc.before.request_id = self.doc.request_id
@@ -49,6 +49,8 @@ class OfflineControllerTests(unittest.TestCase):
         with self.assertRaises(test_api.FakePermissionError): self.doc.validate()
         self.context.frappe.flags.maas_offline_auto_accept = self.doc.request_id
         with self.assertRaises(test_api.FakePermissionError): self.doc.validate()
+        self.doc.before.test_mode = 1
+        self.doc.validate()
         self.doc.test_mode = 0; self.doc.before.test_mode = 0
         self.doc.validate()
         self.doc.before.status = 'Approved'

@@ -15,6 +15,13 @@ def enabled(employee, config):
     return attendance.enabled_for(employee, config) and str(config.get('enable_offline_test', 0)) == '1'
 
 
+def automatic_enabled(config):
+    if config.get('production_mode'):
+        return bool(config.get('auto_accept_offline'))
+    return (str(config.get('auto_accept_test_offline', 0)) == '1'
+            and str(config.get('require_test_photo', 0)) == '1')
+
+
 def parse_claim(request):
     if isinstance(request, str):
         if len(request) > 3 * 1024 * 1024: raise ValueError('Offline request too large.')
@@ -45,8 +52,8 @@ def parse_claim(request):
 
 
 def check_window(event, now):
-    if event < now - timedelta(hours=24) or event > now + timedelta(minutes=2):
-        raise ValueError('Offline uploads must be within 24 hours. Ask HR to correct older events manually.')
+    if event < now - timedelta(days=7) or event > now + timedelta(minutes=2):
+        raise ValueError('Offline uploads must be within seven days. Ask HR to correct older events manually.')
 
 
 def reply(row, duplicate=False):
@@ -138,7 +145,7 @@ def submit(employee, request, device_secret):
             # from the immutable persisted evidence snapshot.
             doc.reload()
     finally: frappe.flags.maas_offline_write = previous
-    if config.get('production_mode') and config.get('auto_accept_offline'):
+    if automatic_enabled(config):
         # The employee/device/policy locks and evidence validation above remain
         # in the same POST transaction as this checkin and final claim update.
         local = site_time(event, get_system_timezone())
@@ -146,7 +153,7 @@ def submit(employee, request, device_secret):
         if conflict:
             doc.sync_note = conflict
         else:
-            create_checkin(doc, payload, local, production=True)
+            create_checkin(doc, payload, local, production=bool(config.get('production_mode')))
             from frappe.utils import now_datetime
             doc.status = 'Approved'
             doc.automatically_accepted = 1

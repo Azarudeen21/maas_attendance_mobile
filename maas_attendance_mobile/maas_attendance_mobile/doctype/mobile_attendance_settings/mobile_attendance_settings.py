@@ -4,6 +4,8 @@ from frappe.model.document import Document
 
 class MobileAttendanceSettings(Document):
     def validate(self):
+        if self.get('auto_accept_test_offline') in (1, '1', True) and (self.get('enable_offline_test') not in (1, '1', True) or self.get('require_test_photo') not in (1, '1', True)):
+            frappe.throw('Automatic test acceptance requires offline test punches and photo/GPS evidence.')
         production = self.get('enable_production_attendance') in (1, '1', True)
         if self.get('enable_production_offline') in (1, '1', True) and not production:
             frappe.throw('Enable production attendance before enabling production offline claims.')

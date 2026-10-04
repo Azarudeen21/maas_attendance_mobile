@@ -1,155 +1,163 @@
 {
-  "doctype": "DocType",
-  "name": "Mobile Attendance Settings",
-  "module": "MAAS Attendance Mobile",
-  "engine": "InnoDB",
-  "field_order": [
-    "notice",
-    "test_policy_section",
-    "enable_test_attendance",
-    "use_company_test_policies",
-    "test_employee",
-    "capture_section",
-    "require_test_photo",
-    "require_test_location",
-    "require_approved_device",
-    "offline_section",
-    "enable_offline_test",
-    "site_setup_section",
-    "enable_mobile_site_setup",
-    "mobile_site_label",
-    "mobile_oauth_client",
-    "production_section",
-    "enable_production_attendance",
-    "enable_production_offline"
-  ],
-  "fields": [
-    {
-      "fieldname": "notice",
-      "fieldtype": "HTML",
-      "label": "Test checkpoint",
-      "options": "<p>Development test only. All punches skip auto attendance. Offline claims require HR review. Face verification is not yet enabled.</p>"
-    },
-    {
-      "fieldname": "enable_test_attendance",
-      "fieldtype": "Check",
-      "label": "Enable Online Test Attendance",
-      "default": "0"
-    },
-    {
-      "fieldname": "test_employee",
-      "fieldtype": "Link",
-      "label": "Test Employee",
-      "options": "Employee",
-      "description": "Choose only your dedicated Mobile Test employee. This login must use the custom punch API."
-    },
-    {
-      "fieldname": "require_test_location",
-      "fieldtype": "Check",
-      "label": "Require GPS Workplace Check for Test Punches",
-      "default": "0",
-      "description": "Enable only after configuring an enabled Mobile Attendance Workplace for the test employee's company. Both IN and OUT require a fresh precise location."
-    },
-    {
-      "fieldname": "require_approved_device",
-      "fieldtype": "Check",
-      "label": "Require Approved Device for Test Punches",
-      "default": "0"
-    },
-    {
-      "fieldname": "enable_offline_test",
-      "fieldtype": "Check",
-      "label": "Enable Offline Test Claims",
-      "default": "0",
-      "description": "Approved devices only. Upload within 24 hours; HR must review before a test checkin is created."
-    },
-    {
-      "label": "Require Punch Photo and GPS",
-      "description": "Record the time when the punch button is pressed, then take a photo and capture GPS. Photos are private evidence; no identity or liveness verification is performed.",
-      "fieldname": "require_test_photo",
-      "fieldtype": "Check",
-      "default": "0"
-    },
-    {
-      "fieldname": "test_policy_section",
-      "fieldtype": "Section Break",
-      "label": "Test policy"
-    },
-    {
-      "fieldname": "capture_section",
-      "fieldtype": "Section Break",
-      "label": "Punch evidence"
-    },
-    {
-      "fieldname": "offline_section",
-      "fieldtype": "Section Break",
-      "label": "Offline review"
-    },
-    {
-      "fieldname": "site_setup_section",
-      "fieldtype": "Section Break",
-      "label": "Mobile site connection"
-    },
-    {
-      "fieldname": "enable_mobile_site_setup",
-      "fieldtype": "Check",
-      "label": "Enable Mobile Site Connection",
-      "default": "0",
-      "description": "Publish only the public client ID and site label for employee onboarding. This does not enable attendance."
-    },
-    {
-      "fieldname": "mobile_site_label",
-      "fieldtype": "Data",
-      "label": "Site Display Name"
-    },
-    {
-      "fieldname": "mobile_oauth_client",
-      "fieldtype": "Link",
-      "options": "OAuth Client",
-      "label": "Mobile Public OAuth Client",
-      "description": "Authorization Code, Code response, Token Endpoint Auth Method None, all scope, MAAS redirect URI."
-    },
-    {
-      "fieldname": "use_company_test_policies",
-      "fieldtype": "Check",
-      "label": "Use Company Test Policies",
-      "default": "0",
-      "description": "Select a dedicated test employee per company using Mobile Attendance Company Policy. Site online/offline switches remain emergency gates; site evidence requirements are minimums."
-    },
-    {
-      "fieldname": "production_section",
-      "label": "Production attendance",
-      "fieldtype": "Section Break"
-    },
-    {
-      "fieldname": "enable_production_attendance",
-      "label": "Enable Production Attendance",
-      "description": "Requires explicit employee enrollment, enabled company policy and an approved device. Production checkins do not skip automatic attendance.",
-      "default": "0",
-      "fieldtype": "Check"
-    },
-    {
-      "fieldname": "enable_production_offline",
-      "label": "Enable Production Offline Claims",
-      "description": "Uploaded original evidence awaits HR review. Approval creates a production checkin.",
-      "default": "0",
-      "fieldtype": "Check"
-    }
-  ],
-  "permissions": [
-    {
-      "role": "System Manager",
-      "read": 1,
-      "write": 1,
-      "create": 1
-    },
-    {
-      "role": "HR Manager",
-      "read": 1
-    }
-  ],
-  "sort_field": "creation",
-  "sort_order": "DESC",
-  "issingle": 1,
-  "track_changes": 1
+ "doctype": "DocType",
+ "name": "Mobile Attendance Settings",
+ "module": "MAAS Attendance Mobile",
+ "engine": "InnoDB",
+ "field_order": [
+  "notice",
+  "test_policy_section",
+  "enable_test_attendance",
+  "use_company_test_policies",
+  "test_employee",
+  "capture_section",
+  "require_test_photo",
+  "require_test_location",
+  "require_approved_device",
+  "offline_section",
+  "enable_offline_test",
+  "auto_accept_test_offline",
+  "site_setup_section",
+  "enable_mobile_site_setup",
+  "mobile_site_label",
+  "mobile_oauth_client",
+  "production_section",
+  "enable_production_attendance",
+  "enable_production_offline"
+ ],
+ "fields": [
+  {
+   "fieldname": "notice",
+   "fieldtype": "HTML",
+   "label": "Test checkpoint",
+   "options": "<p>Development test only. All punches skip auto attendance. Offline claims require HR review. Face verification is not yet enabled.</p>"
+  },
+  {
+   "fieldname": "enable_test_attendance",
+   "fieldtype": "Check",
+   "label": "Enable Online Test Attendance",
+   "default": "0"
+  },
+  {
+   "fieldname": "test_employee",
+   "fieldtype": "Link",
+   "label": "Test Employee",
+   "options": "Employee",
+   "description": "Choose only your dedicated Mobile Test employee. This login must use the custom punch API."
+  },
+  {
+   "fieldname": "require_test_location",
+   "fieldtype": "Check",
+   "label": "Require GPS Workplace Check for Test Punches",
+   "default": "0",
+   "description": "Enable only after configuring an enabled Mobile Attendance Workplace for the test employee's company. Both IN and OUT require a fresh precise location."
+  },
+  {
+   "fieldname": "require_approved_device",
+   "fieldtype": "Check",
+   "label": "Require Approved Device for Test Punches",
+   "default": "0"
+  },
+  {
+   "fieldname": "enable_offline_test",
+   "fieldtype": "Check",
+   "label": "Enable Offline Test Claims",
+   "default": "0",
+   "description": "Approved devices only. Original time, photo and GPS upload within seven days. Enable automatic test acceptance to skip routine HR review."
+  },
+  {
+   "label": "Require Punch Photo and GPS",
+   "description": "Record the time when the punch button is pressed, then take a photo and capture GPS. Photos are private evidence; no identity or liveness verification is performed.",
+   "fieldname": "require_test_photo",
+   "fieldtype": "Check",
+   "default": "0"
+  },
+  {
+   "fieldname": "test_policy_section",
+   "fieldtype": "Section Break",
+   "label": "Test policy"
+  },
+  {
+   "fieldname": "capture_section",
+   "fieldtype": "Section Break",
+   "label": "Punch evidence"
+  },
+  {
+   "fieldname": "offline_section",
+   "fieldtype": "Section Break",
+   "label": "Offline review"
+  },
+  {
+   "fieldname": "site_setup_section",
+   "fieldtype": "Section Break",
+   "label": "Mobile site connection"
+  },
+  {
+   "fieldname": "enable_mobile_site_setup",
+   "fieldtype": "Check",
+   "label": "Enable Mobile Site Connection",
+   "default": "0",
+   "description": "Publish only the public client ID and site label for employee onboarding. This does not enable attendance."
+  },
+  {
+   "fieldname": "mobile_site_label",
+   "fieldtype": "Data",
+   "label": "Site Display Name"
+  },
+  {
+   "fieldname": "mobile_oauth_client",
+   "fieldtype": "Link",
+   "options": "OAuth Client",
+   "label": "Mobile Public OAuth Client",
+   "description": "Authorization Code, Code response, Token Endpoint Auth Method None, all scope, MAAS redirect URI."
+  },
+  {
+   "fieldname": "use_company_test_policies",
+   "fieldtype": "Check",
+   "label": "Use Company Test Policies",
+   "default": "0",
+   "description": "Select a dedicated test employee per company using Mobile Attendance Company Policy. Site online/offline switches remain emergency gates; site evidence requirements are minimums."
+  },
+  {
+   "fieldname": "production_section",
+   "label": "Production attendance",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "enable_production_attendance",
+   "label": "Enable Production Attendance",
+   "description": "Requires explicit employee enrollment, enabled company policy and an approved device. Production checkins do not skip automatic attendance.",
+   "default": "0",
+   "fieldtype": "Check"
+  },
+  {
+   "fieldname": "enable_production_offline",
+   "label": "Enable Production Offline Claims",
+   "description": "Uploaded original evidence awaits HR review. Approval creates a production checkin.",
+   "default": "0",
+   "fieldtype": "Check"
+  },
+  {
+   "fieldname": "auto_accept_test_offline",
+   "fieldtype": "Check",
+   "label": "Automatically accept valid test offline punches",
+   "default": "0",
+   "description": "Dedicated test employees only. Requires photo/GPS evidence and an approved device. Does not mark daily attendance."
+  }
+ ],
+ "permissions": [
+  {
+   "role": "System Manager",
+   "read": 1,
+   "write": 1,
+   "create": 1
+  },
+  {
+   "role": "HR Manager",
+   "read": 1
+  }
+ ],
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "issingle": 1,
+ "track_changes": 1
 }

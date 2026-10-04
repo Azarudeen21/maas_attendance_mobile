@@ -5,7 +5,7 @@ from maas_attendance_mobile import __version__
 
 POLICY_FIELDS = (
     'enable_test_attendance', 'require_test_location', 'require_approved_device',
-    'enable_offline_test', 'require_test_photo', 'use_company_test_policies',
+    'enable_offline_test', 'auto_accept_test_offline', 'require_test_photo', 'use_company_test_policies',
     'enable_production_attendance', 'enable_production_offline',
 )
 

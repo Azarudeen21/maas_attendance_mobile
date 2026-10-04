@@ -65,6 +65,40 @@ class OfflineTests(unittest.TestCase):
         self.frappe.session.user = 'hr@example.test'
         self.frappe.get_roles.side_effect = lambda user=None: ['HR Manager'] if user is None else ['Employee']
 
+    def test_automatic_test_requires_explicit_gate_and_photo_policy(self):
+        self.assertFalse(self.service.automatic_enabled(self.context.config))
+        self.context.config['auto_accept_test_offline'] = '1'
+        self.assertFalse(self.service.automatic_enabled(self.context.config))
+        self.context.config['require_test_photo'] = '1'
+        self.assertTrue(self.service.automatic_enabled(self.context.config))
+
+    def test_valid_test_punch_auto_accepts_without_hr_and_exact_retry_is_idempotent(self):
+        from unittest.mock import patch
+        with patch.object(self.service, 'automatic_enabled', return_value=True):
+            result = self.submit()
+        self.assertEqual(result['status'], 'Approved')
+        self.assertTrue(result['automatically_accepted'])
+        self.assertTrue(result['skip_auto_attendance'])
+        self.assertEqual(self.context.created[-1]['skip_auto_attendance'], 1)
+        self.assertTrue(self.submit()['duplicate'])
+        self.assertEqual(len(self.context.created), 2)
+
+    def test_automatic_test_conflict_retains_evidence_without_inserting_checkin(self):
+        from unittest.mock import patch
+        self.context.latest = {'name': 'CHANGED', 'log_type': 'OUT', 'time': datetime.now()}
+        with patch.object(self.service, 'automatic_enabled', return_value=True):
+            result = self.submit()
+        self.assertEqual(result['status'], 'Pending Review')
+        self.assertFalse(result['automatically_accepted'])
+        self.assertIsNone(result['checkin'])
+        self.assertEqual(len(self.context.created), 1)
+
+    def test_several_days_offline_are_accepted_but_window_is_bounded(self):
+        now = datetime.now(timezone.utc)
+        self.service.check_window(now - timedelta(days=6), now)
+        with self.assertRaises(ValueError):
+            self.service.check_window(now - timedelta(days=8), now)
+
     def test_upload_creates_only_immutable_pending_claim_without_secret(self):
         result = self.submit()
         self.assertEqual(result['status'], 'Pending Review')
@@ -88,8 +122,8 @@ class OfflineTests(unittest.TestCase):
         self.service.require_approved.side_effect = test_api.FakePermissionError('revoked')
         with self.assertRaises(test_api.FakePermissionError): self.submit()
         self.service.require_approved.side_effect = None
-        self.request['timestamp'] = (datetime.now(timezone.utc) - timedelta(hours=25)).isoformat()
-        with self.assertRaisesRegex(ValueError, '24 hours'): self.submit()
+        self.request['timestamp'] = (datetime.now(timezone.utc) - timedelta(days=8)).isoformat()
+        with self.assertRaisesRegex(ValueError, 'seven days'): self.submit()
         self.assertEqual(self.context.created, [])
 
     def test_scope_unknown_fields_and_online_id_collision_rejected(self):
