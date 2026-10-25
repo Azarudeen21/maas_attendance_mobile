@@ -158,3 +158,15 @@ def photo_retention_preview(company):
 def photo_retention_hold(doctype, name, hold, reason):
     from maas_attendance_mobile.photo_retention import set_hold
     return set_hold(doctype, name, hold, reason)
+
+
+@frappe.whitelist(methods=['POST'])
+def face_test_match(image_base64, company=None):
+    from maas_attendance_mobile.faces import test_match
+    return test_match(image_base64, company)
+
+
+@frappe.whitelist(methods=['POST'])
+def face_enroll_employee_photos(company, consent_confirmed):
+    from maas_attendance_mobile.faces import enroll_from_employee_photos
+    return enroll_from_employee_photos(company, consent_confirmed)

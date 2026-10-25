@@ -1,0 +1,29 @@
+{
+ "doctype": "DocType", "name": "Mobile Attendance Face Enrollment", "module": "MAAS Attendance Mobile", "engine": "InnoDB",
+ "autoname": "MAFE-.#####", "title_field": "employee_name", "track_changes": 1,
+ "field_order": ["notice", "employee", "employee_name", "company", "column_break_main", "enabled", "source", "consent_confirmed", "photo_section", "photo", "face_score", "column_break_audit", "model_version", "enrolled_by", "enrolled_at", "image_sha256", "embedding"],
+ "fields": [
+  {"fieldname": "notice", "fieldtype": "HTML", "label": "Pilot notice", "options": "<p>Pilot enrollment for supervisor face check-in. Use one front-facing, well-lit photo of this employee only. Face codes are computed on the server from the private photo; delete the enrollment to erase them.</p>"},
+  {"fieldname": "employee", "fieldtype": "Link", "options": "Employee", "label": "Employee", "reqd": 1, "in_list_view": 1, "in_standard_filter": 1},
+  {"fieldname": "employee_name", "fieldtype": "Data", "label": "Employee Name", "read_only": 1, "in_list_view": 1},
+  {"fieldname": "company", "fieldtype": "Link", "options": "Company", "label": "Company", "read_only": 1, "in_standard_filter": 1},
+  {"fieldname": "column_break_main", "fieldtype": "Column Break"},
+  {"fieldname": "enabled", "fieldtype": "Check", "label": "Enabled", "default": "1", "in_list_view": 1},
+  {"fieldname": "source", "fieldtype": "Select", "options": "Uploaded Photo\nEmployee Photo", "label": "Source", "default": "Uploaded Photo", "read_only": 1, "in_list_view": 1},
+  {"fieldname": "consent_confirmed", "fieldtype": "Check", "label": "Employee consent to face recognition is on file", "default": "0"},
+  {"fieldname": "photo_section", "fieldtype": "Section Break", "label": "Face photo"},
+  {"fieldname": "photo", "fieldtype": "Attach Image", "label": "Face Photo", "reqd": 1, "description": "Upload as a private file. Exactly one clear face, at least 64 pixels wide."},
+  {"fieldname": "face_score", "fieldtype": "Float", "label": "Detection Score", "precision": "4", "read_only": 1},
+  {"fieldname": "column_break_audit", "fieldtype": "Column Break"},
+  {"fieldname": "model_version", "fieldtype": "Data", "label": "Model Version", "read_only": 1},
+  {"fieldname": "enrolled_by", "fieldtype": "Link", "options": "User", "label": "Enrolled By", "read_only": 1},
+  {"fieldname": "enrolled_at", "fieldtype": "Datetime", "label": "Enrolled At", "read_only": 1},
+  {"fieldname": "image_sha256", "fieldtype": "Data", "label": "Photo SHA-256", "read_only": 1, "hidden": 1},
+  {"fieldname": "embedding", "fieldtype": "Long Text", "label": "Face Embedding", "read_only": 1, "hidden": 1}
+ ],
+ "permissions": [
+  {"role": "System Manager", "read": 1, "write": 1, "create": 1, "delete": 1},
+  {"role": "HR Manager", "read": 1, "write": 1, "create": 1, "delete": 1}
+ ],
+ "sort_field": "modified", "sort_order": "DESC"
+}

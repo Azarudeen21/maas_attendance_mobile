@@ -1,5 +1,6 @@
 # MAAS Attendance Mobile — Frappe app
 
+Version 0.15.0 adds a face recognition pilot: HR face enrollment and test matching only.
 Version 0.10.0 adds customer-site mobile onboarding with public PKCE setup.
 Version 0.8.0 added an HR control screen and stronger settings validation.
 Version 0.7.0 added private punch photos with GPS and the original button time,
@@ -42,6 +43,46 @@ sessions both use the server session identity. Paths below are prefixed by
 - POST review_offline_claim: HR Manager/System Manager approves or rejects with a reason.
 - GET hr_overview: permission-scoped counts and policy for HR/System Managers.
 - GET mobile_setup: opt-in guest-readable public client ID/label only.
+
+## Face recognition pilot (v0.15.0)
+
+First step towards supervisor face check-in. This release only enrolls faces and
+lets HR test matches; it creates no checkins and the mobile API still reports
+face_verification_enabled false. Enable Face Recognition Pilot in Mobile
+Attendance Settings (off by default) before any face photo is processed.
+
+The server uses OpenCV YuNet for detection and SFace for 128-value embeddings.
+Both ONNX models are bundled in maas_attendance_mobile/face_models (about 38 MB,
+MIT and Apache-2.0, pinned SHA-256 checked before loading) so no download runs at
+request time. New Python dependencies: numpy and opencv-python-headless.
+
+Mobile Attendance Face Enrollment holds one private photo per record; at most
+five enabled photos per employee. The server derives company, name and the
+embedding from the attached photo; client-supplied embeddings are recomputed.
+Exactly one clear face (at least 64 px) is required. HR must confirm consent is
+on file. Disable a photo to stop matching it, or delete the record to erase the
+embedding and private photo. Only HR Manager/System Manager can use it.
+
+From the enrollment list HR can:
+
+- Enroll from Employee photos: background job for one company's active employees
+  with an Employee image. It copies each image privately, skips unchanged photos
+  and replaces older Employee Photo samples. Rerun after HR changes photos.
+- Test face match: upload a photo (analysed in memory, never stored) and see the
+  top three active employees with scores and the decision.
+
+A match needs a cosine score of at least Face Match Threshold (default 0.363)
+and a lead of at least Face Match Margin (default 0.05) over the next employee;
+otherwise the result is no_match or ambiguous. Left employees and employees who
+moved company are excluded. Tune both values with real staff photos and lighting
+before supervisor check-in is built. Biometric data is sensitive personal data;
+confirm consent, retention and access policy with the customer before enabling.
+
+Local evidence: 18 new mocked tests; a real-image smoke test (public sample
+photos) matched 5/5 known probes, rejected the unknown person and refused both
+group photos, identically on OpenCV 4.14 and 5.0. This is not an accuracy
+benchmark for your workforce. Supervisor kiosk endpoints and the mobile screen
+are the next stages.
 
 ## Customer site connections (v0.10.0)
 

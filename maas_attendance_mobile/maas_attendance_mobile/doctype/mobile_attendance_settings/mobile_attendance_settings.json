@@ -22,7 +22,11 @@
   "mobile_oauth_client",
   "production_section",
   "enable_production_attendance",
-  "enable_production_offline"
+  "enable_production_offline",
+  "face_section",
+  "enable_face_recognition",
+  "face_match_threshold",
+  "face_match_margin"
  ],
  "fields": [
   {
@@ -142,6 +146,34 @@
    "label": "Automatically accept valid test offline punches",
    "default": "0",
    "description": "Dedicated test employees only. Requires photo/GPS evidence and an approved device. Does not mark daily attendance."
+  },
+  {
+   "fieldname": "face_section",
+   "label": "Face recognition (pilot)",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "enable_face_recognition",
+   "label": "Enable Face Recognition Pilot",
+   "fieldtype": "Check",
+   "default": "0",
+   "description": "Allows HR to enroll employee face photos and test matches. Does not create checkins. Record employee consent before enrolling."
+  },
+  {
+   "fieldname": "face_match_threshold",
+   "label": "Face Match Threshold",
+   "fieldtype": "Float",
+   "precision": "3",
+   "default": "0.363",
+   "description": "Minimum cosine similarity (0.2 to 0.9). Raise it to reduce wrong matches; tune with Test face match on real staff photos."
+  },
+  {
+   "fieldname": "face_match_margin",
+   "label": "Face Match Margin",
+   "fieldtype": "Float",
+   "precision": "3",
+   "default": "0.05",
+   "description": "The best employee must lead the next one by at least this much (0 to 0.3), otherwise the result is ambiguous."
   }
  ],
  "permissions": [

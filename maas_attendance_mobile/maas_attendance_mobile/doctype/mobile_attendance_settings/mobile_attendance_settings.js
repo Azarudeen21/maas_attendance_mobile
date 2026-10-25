@@ -4,6 +4,7 @@ frappe.ui.form.on('Mobile Attendance Settings', {
     frm.add_custom_button(__('Workplaces'), () => frappe.set_route('List', 'Mobile Attendance Workplace'));
     frm.add_custom_button(__('Company test policies'), () => frappe.set_route('List', 'Mobile Attendance Company Policy'));
     frm.add_custom_button(__('Production employee enrollments'), () => frappe.set_route('List', 'Mobile Attendance Employee'));
+    frm.add_custom_button(__('Face enrollments'), () => frappe.set_route('List', 'Mobile Attendance Face Enrollment'));
     if (frappe.user_roles.includes('System Manager')) {
       frm.add_custom_button(__('OAuth clients'), () => frappe.set_route('List', 'OAuth Client'));
       frm.add_custom_button(__('Disable test submissions'), () => {

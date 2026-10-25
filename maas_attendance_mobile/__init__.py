@@ -1,3 +1,3 @@
 """MAAS mobile attendance integration for Frappe HR."""
 
-__version__ = "0.14.0"
+__version__ = "0.15.0"
