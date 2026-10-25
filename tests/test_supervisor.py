@@ -119,6 +119,10 @@ class SupervisorTests(unittest.TestCase):
         self.assertTrue(self.base.base.api.capabilities()['supervisor_checkin_enabled'])
         self.config['enable_face_recognition'] = 0
         self.assertFalse(self.base.base.api.capabilities()['supervisor_checkin_enabled'])
+        self.config['enable_face_recognition'] = 1
+        self.assertTrue(self.base.base.api.attendance_status()['supervisor_checkin_enabled'])
+        self.frappe.get_roles.return_value = ['Employee']
+        self.assertFalse(self.base.base.api.attendance_status()['supervisor_checkin_enabled'])
 
 
 if __name__ == '__main__':
