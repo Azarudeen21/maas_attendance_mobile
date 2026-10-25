@@ -162,12 +162,13 @@ def decide(scores, threshold, margin):
     return 'match', ranked
 
 
-def rank(vector, company=None):
+def rank(vector, company=None, *, ignore_permissions=False):
     """Best score per ACTIVE employee among enabled current-model enrollments."""
     filters = {'enabled': 1, 'model_version': MODEL_VERSION}
     if company:
         filters['company'] = company
-    rows = frappe.get_list(ENROLLMENT, filters=filters, fields=['employee', 'embedding'], limit_page_length=0)
+    # Supervisors cannot read enrollments; their calls are scoped to their own company instead.
+    rows = (frappe.get_all if ignore_permissions else frappe.get_list)(ENROLLMENT, filters=filters, fields=['employee', 'embedding'], limit_page_length=0)
     active = {row['name']: row for row in frappe.get_all('Employee',
         filters={'name': ['in', sorted({row['employee'] for row in rows})], 'status': 'Active'},
         fields=['name', 'employee_name', 'company'], limit_page_length=0)} if rows else {}

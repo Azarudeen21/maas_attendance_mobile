@@ -1,6 +1,6 @@
 # MAAS Attendance Mobile — Frappe app
 
-Version 0.15.0 adds a face recognition pilot: HR face enrollment and test matching only.
+Version 0.16.0 adds supervisor face check-in on top of the 0.15.0 face recognition pilot.
 Version 0.10.0 adds customer-site mobile onboarding with public PKCE setup.
 Version 0.8.0 added an HR control screen and stronger settings validation.
 Version 0.7.0 added private punch photos with GPS and the original button time,
@@ -43,6 +43,41 @@ sessions both use the server session identity. Paths below are prefixed by
 - POST review_offline_claim: HR Manager/System Manager approves or rejects with a reason.
 - GET hr_overview: permission-scoped counts and policy for HR/System Managers.
 - GET mobile_setup: opt-in guest-readable public client ID/label only.
+
+## Supervisor face check-in (v0.16.0)
+
+A supervisor scans an employee with their own approved phone; the face picks
+the employee and the supervisor confirms. Off by default.
+
+Setup (System Manager / HR):
+1. Mobile Attendance Settings: enable Face Recognition Pilot, then Enable
+   Supervisor Face Check-in.
+2. Give the supervisor's login the MAAS Attendance Supervisor role (created on
+   migrate). The supervisor needs an active Employee record; scans only match
+   active employees of that same company.
+3. The supervisor registers their phone in the app; HR approves the device.
+4. Enroll employee faces (see the pilot section). Each scanned employee must
+   still be eligible under the normal test or production attendance policy.
+
+API (POST, prefix maas_attendance_mobile.api):
+- supervisor_identify(photo, device_id, device_secret): returns decision and,
+  only for a clear match, employee, employee_name, score, next_log_type and
+  attendance_enabled. Nothing is stored. Near-miss names are never returned.
+- supervisor_punch(employee, request_id, log_type, timestamp, device_id,
+  app_version, location, device_secret, photo): identifies the same photo again
+  and requires it to match the confirmed employee, then applies the employee's
+  normal policy (enabled gate, IN/OUT order, freshness, workplace GPS when
+  required). Photo and precise GPS are always required. The receipt records
+  capture_mode Supervisor, the supervisor login and the face score; exact
+  retries return the original receipt.
+
+capabilities reports supervisor_checkin_enabled. Supervisor punches are online
+only. No liveness check: the supervisor is responsible for watching for printed
+or on-screen faces.
+
+Verified locally: 181 mocked tests, and a rollback-only run on the local HRMS
+site (enroll, approve device, identify, punch, stranger rejected, wrong face
+refused).
 
 ## Face recognition pilot (v0.15.0)
 

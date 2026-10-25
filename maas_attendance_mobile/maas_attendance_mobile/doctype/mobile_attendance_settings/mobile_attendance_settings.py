@@ -11,6 +11,8 @@ class MobileAttendanceSettings(Document):
             limits(self)
         except ValueError as error:
             frappe.throw(str(error))
+        if self.get('enable_supervisor_checkin') in (1, '1', True) and self.get('enable_face_recognition') not in (1, '1', True):
+            frappe.throw('Enable the face recognition pilot before supervisor face check-in.')
         production = self.get('enable_production_attendance') in (1, '1', True)
         if self.get('enable_production_offline') in (1, '1', True) and not production:
             frappe.throw('Enable production attendance before enabling production offline claims.')

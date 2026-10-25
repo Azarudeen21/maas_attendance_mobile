@@ -25,6 +25,7 @@
   "enable_production_offline",
   "face_section",
   "enable_face_recognition",
+  "enable_supervisor_checkin",
   "face_match_threshold",
   "face_match_margin"
  ],
@@ -174,6 +175,13 @@
    "precision": "3",
    "default": "0.05",
    "description": "The best employee must lead the next one by at least this much (0 to 0.3), otherwise the result is ambiguous."
+  },
+  {
+   "fieldname": "enable_supervisor_checkin",
+   "label": "Enable Supervisor Face Check-in",
+   "fieldtype": "Check",
+   "default": "0",
+   "description": "Users with the MAAS Attendance Supervisor role can check in employees of their own company by face from an approved phone. Each employee still needs mobile attendance enabled."
   }
  ],
  "permissions": [

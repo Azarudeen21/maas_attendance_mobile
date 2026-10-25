@@ -19,6 +19,9 @@
     "distance_m",
     "accuracy_m",
     "registered_device",
+    "capture_mode",
+    "supervisor",
+    "face_score",
     "punch_photo",
     "photo_sha256",
     "photo_captured_at",
@@ -201,6 +204,29 @@
       "options": "Mobile Attendance Photo Cleanup",
       "label": "Photo Cleanup Audit",
       "fieldname": "photo_cleanup"
+    },
+    {
+      "fieldname": "capture_mode",
+      "fieldtype": "Select",
+      "options": "Self\nSupervisor",
+      "default": "Self",
+      "label": "Capture Mode",
+      "read_only": 1,
+      "in_standard_filter": 1
+    },
+    {
+      "fieldname": "supervisor",
+      "fieldtype": "Link",
+      "options": "User",
+      "label": "Supervisor",
+      "read_only": 1
+    },
+    {
+      "fieldname": "face_score",
+      "fieldtype": "Float",
+      "precision": "4",
+      "label": "Face Match Score",
+      "read_only": 1
     }
   ],
   "permissions": [

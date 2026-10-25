@@ -90,7 +90,13 @@ def capabilities():
         "face_verification_enabled": False,
         "punch_photo_supported": True,
         "device_registration_enabled": True,
+        "supervisor_checkin_enabled": _supervisor_available(),
     }
+
+
+def _supervisor_available():
+    from maas_attendance_mobile.supervisor import available
+    return available()
 
 
 @frappe.whitelist(methods=["GET"])
@@ -170,3 +176,17 @@ def face_test_match(image_base64, company=None):
 def face_enroll_employee_photos(company, consent_confirmed):
     from maas_attendance_mobile.faces import enroll_from_employee_photos
     return enroll_from_employee_photos(company, consent_confirmed)
+
+
+
+@frappe.whitelist(methods=['POST'])
+def supervisor_identify(photo, device_id, device_secret):
+    from maas_attendance_mobile.supervisor import identify
+    return identify(_linked_employee(), photo, device_id, device_secret)
+
+
+@frappe.whitelist(methods=['POST'])
+def supervisor_punch(employee, request_id, log_type, timestamp, device_id, app_version, location, device_secret, photo):
+    """The server identifies the face again; employee is only the supervisor's confirmation."""
+    from maas_attendance_mobile.supervisor import punch
+    return punch(_linked_employee(), employee, request_id, log_type, timestamp, device_id, app_version, location, device_secret, photo)

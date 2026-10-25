@@ -31,3 +31,6 @@ doc_events = {
         "on_trash": "maas_attendance_mobile.attendance.guard_delete",
     }
 }
+
+after_install = "maas_attendance_mobile.supervisor.ensure_role"
+after_migrate = "maas_attendance_mobile.supervisor.ensure_role"
