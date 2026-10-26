@@ -76,6 +76,24 @@ class EmployeeRulesTests(unittest.TestCase):
         self.boxes(ONLINE, WITHOUT)
         self.assertFalse(self.base.submit()['duplicate'])
 
+    def test_without_photo_employee_uses_normal_hrms_checkin(self):
+        import types
+        new = types.SimpleNamespace(employee=self.employee['name'], is_new=lambda: True)
+        self.boxes(ONLINE, WITHOUT)
+        self.assertTrue(self.base.service.status(self.employee)['standard_checkin'])
+        self.base.service.guard_checkin(new)  # Protected test login, no MAAS context: allowed.
+        self.assertFalse(self.base.created)
+        for ticked in ((ONLINE, WITH, WITHOUT), (OFFLINE, WITHOUT), (ONLINE, WITH)):
+            self.boxes(*ticked)
+            self.assertFalse(self.base.service.status(self.employee)['standard_checkin'])
+            with self.assertRaises(test_api.FakePermissionError):
+                self.base.service.guard_checkin(new)
+        self.boxes(ONLINE, WITHOUT)
+        with self.assertRaises(test_api.FakePermissionError):
+            self.base.service.guard_checkin(types.SimpleNamespace(employee=self.employee['name'], is_new=lambda: False))
+        self.assertTrue(self.rules.allows_standard_checkin(self.employee['name'], self.employee['user_id']))
+        self.assertFalse(self.rules.allows_standard_checkin(self.employee['name'], 'someone.else@example.test'))
+
     def test_fields_are_created_on_employee_after_device_id(self):
         created = Mock()
         module = types.ModuleType('frappe.custom.doctype.custom_field.custom_field')

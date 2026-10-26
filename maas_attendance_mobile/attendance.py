@@ -65,6 +65,7 @@ def status(employee):
         "offline_auto_accept_enabled": enabled(employee['name'], config) and automatic_enabled(config),
         "photo_required": str(config.get('require_test_photo', 0)) == '1',
         "photo_optional": bool(config.get('photo_optional')),
+        "standard_checkin": bool(config.get('standard_checkin')),
         "supervisor_checkin_enabled": supervisor_available(),
     }
 
@@ -206,6 +207,10 @@ def guard_checkin(doc, method=None):
     if not protected:
         return
     context = frappe.flags.get("maas_test_punch")
+    if not context and doc.is_new():
+        from maas_attendance_mobile.employee_rules import allows_standard_checkin
+        if allows_standard_checkin(doc.employee, test_user):
+            return  # "Check in Without Photo" employees use normal HRMS check-in.
     if not context or context.get("user") != test_user or context.get("employee") != doc.employee or not doc.is_new():
         frappe.throw("Use the MAAS test punch API for this account.", frappe.PermissionError)
     require_enabled(doc.employee, settings(doc.employee))

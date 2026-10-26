@@ -1,6 +1,6 @@
 # MAAS Attendance Mobile — Frappe app
 
-Version 0.17.0 adds per-employee check-in checkboxes; 0.16.0 added supervisor face check-in.
+Version 0.18.0 lets Without Photo employees use normal HRMS check-in; 0.17.0 added per-employee checkboxes.
 Version 0.10.0 adds customer-site mobile onboarding with public PKCE setup.
 Version 0.8.0 added an HR control screen and stronger settings validation.
 Version 0.7.0 added private punch photos with GPS and the original button time,
@@ -61,6 +61,12 @@ review, automatic acceptance, supervisor scan, status).
   asks); neither follows the site/company setting.
 
 Upgrading blocks every employee until HR ticks their channel boxes.
+
+Online + Check in Without Photo (and not With Photo): the employee uses normal
+HRMS check-in/out. The app passes HRMS's own request through while connected
+with no saved offline punches; the server allows that standard insert only for
+a new check-in on the employee's own record. It is a normal HRMS check-in: no
+MAAS receipt, device approval or photo, and automatic attendance is not skipped.
 
 ## Supervisor face check-in (v0.16.0)
 

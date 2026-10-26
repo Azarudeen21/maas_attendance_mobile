@@ -6,6 +6,7 @@ that HR switched off.
 Photo: with-only requires a photo, without-only needs none (overriding the
 site/company photo requirement), both makes it optional, neither follows the
 site/company setting.
+Online + without-only: the employee uses normal HRMS check-in/out.
 """
 import frappe
 
@@ -33,10 +34,24 @@ def ensure_fields():
     ]}, update=True)
 
 
+def _ticked(row):
+    return {field: row.get(field) in (1, '1', True) for field in FIELDS}
+
+
+def _standard(ticked):
+    return ticked[ONLINE] and ticked[WITHOUT_PHOTO] and not ticked[WITH_PHOTO]
+
+
+def allows_standard_checkin(employee, user):
+    """Normal HRMS Employee Checkin insert, only for the employee's own login."""
+    row = frappe.db.get_value('Employee', employee, ['user_id', *FIELDS], as_dict=True)
+    return isinstance(row, dict) and row.get('user_id') == user and _standard(_ticked(row))
+
+
 def apply(employee, config):
     row = frappe.db.get_value('Employee', employee, list(FIELDS), as_dict=True) or {}
-    ticked = {field: row.get(field) in (1, '1', True) for field in FIELDS}
-    result = dict(config, online_allowed=ticked[ONLINE], photo_optional=False,
+    ticked = _ticked(row)
+    result = dict(config, online_allowed=ticked[ONLINE], photo_optional=False, standard_checkin=_standard(ticked),
         enable_offline_test=int(ticked[OFFLINE] and str(config.get('enable_offline_test', 0)) == '1'))
     if ticked[WITH_PHOTO] or ticked[WITHOUT_PHOTO]:
         result['require_test_photo'] = int(ticked[WITH_PHOTO] and not ticked[WITHOUT_PHOTO])
