@@ -1,4 +1,4 @@
-"""Face enrollment and HR test matching (pilot). No checkins are created here."""
+"""Face enrollment, HR test matching and supervisor face identification support."""
 import base64
 import hashlib
 import io

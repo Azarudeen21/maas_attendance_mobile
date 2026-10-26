@@ -9,7 +9,8 @@ from datetime import datetime, timezone
 
 import frappe
 
-from maas_attendance_mobile.attendance import RECEIPT, _reply, latest_checkin, online_enabled, settings
+from maas_attendance_mobile import policy
+from maas_attendance_mobile.attendance import CONTEXT, RECEIPT, _reply, latest_checkin
 from maas_attendance_mobile.faces import SETTINGS, FaceError, analyse, decide, limits, load_image, rank, truthy
 from maas_attendance_mobile.punch_rules import check_fresh, check_transition, parse_request, request_hash, site_time
 
@@ -78,8 +79,7 @@ def identify(supervisor, photo, device_id, device_secret):
     _, content, _ = _photo(photo)
     result = _identify(supervisor, content)
     if result['decision'] == 'match':
-        config = settings(result['employee'])
-        result['attendance_enabled'] = online_enabled(result['employee'], config)
+        result['attendance_enabled'] = policy.resolve(result['employee'])['online']
         result['next_log_type'] = _next_log_type(result['employee'])
         if not result['attendance_enabled']:
             result['message'] = 'Online check-in is not enabled for this employee. Contact HR.'
@@ -105,7 +105,7 @@ def punch(supervisor, employee, request_id, log_type, timestamp, device_id, app_
     registered_device = require_approved(supervisor, device_id, device_secret)
     fingerprint = request_hash(payload, employee, user)
     receipt = frappe.db.get_value(RECEIPT, request_id, [
-        'name', 'employee', 'request_hash', 'checkin', 'log_type', 'event_time', 'timestamp_utc', 'test_mode',
+        'name', 'employee', 'request_hash', 'checkin', 'log_type', 'event_time', 'timestamp_utc',
     ], as_dict=True, for_update=True)
     if receipt:
         if receipt['employee'] != employee or receipt['request_hash'] != fingerprint:
@@ -121,12 +121,9 @@ def punch(supervisor, employee, request_id, log_type, timestamp, device_id, app_
     current = frappe.db.get_value('Employee', employee, ['status', 'company'], as_dict=True, for_update=True)
     if not current or current['status'] != 'Active' or current['company'] != supervisor['company']:
         frappe.throw('Only active employees in your company can be checked in.', frappe.PermissionError)
-    config = settings(employee)
-    if not online_enabled(employee, config):
+    rules = policy.resolve(employee)
+    if not rules['online']:
         frappe.throw('Online check-in is not enabled for this employee. Contact HR.', frappe.PermissionError)
-    production = bool(config.get('production_mode'))
-    if production:
-        payload['attendance_mode'] = 'production'
 
     from maas_attendance_mobile.photos import check_timing
     try:
@@ -134,7 +131,7 @@ def punch(supervisor, employee, request_id, log_type, timestamp, device_id, app_
     except ValueError as error:
         frappe.throw(str(error), frappe.ValidationError)
     gps = None
-    if str(config.get('require_test_location', 0)) == '1':
+    if rules['require_location']:
         from maas_attendance_mobile.geofence import evaluate
         workplaces = frappe.get_all('Mobile Attendance Workplace', filters={'company': current['company'], 'enabled': 1},
             fields=['name', 'latitude', 'longitude', 'radius_m', 'max_accuracy_m'])
@@ -151,21 +148,19 @@ def punch(supervisor, employee, request_id, log_type, timestamp, device_id, app_
     except ValueError as error:
         frappe.throw(str(error), frappe.ValidationError)
 
-    context = {'employee': employee, 'user': user, 'request_id': request_id, 'production': production}
-    previous = frappe.flags.get('maas_test_punch')
-    frappe.flags.maas_test_punch = context
+    previous = frappe.flags.get(CONTEXT)
+    frappe.flags[CONTEXT] = {'employee': employee, 'user': user, 'request_id': request_id}
     try:
         checkin = frappe.get_doc({
             'doctype': 'Employee Checkin', 'employee': employee, 'time': local_time, 'log_type': log_type,
-            'device_id': ('MAAS:' if production else 'MAAS-TEST:') + device_id,
-            'skip_auto_attendance': int(not production),
+            'device_id': 'MAAS:' + device_id, 'skip_auto_attendance': 0,
             'latitude': location['latitude'], 'longitude': location['longitude'],
         }).insert(ignore_permissions=True)
         receipt = frappe.get_doc({
             'doctype': RECEIPT, 'request_id': request_id, 'employee': employee,
             'request_hash': fingerprint, 'checkin': checkin.name, 'log_type': log_type,
             'event_time': local_time, 'timestamp_utc': payload['timestamp_utc'],
-            'device_id': device_id, 'app_version': app_version, 'test_mode': int(not production),
+            'device_id': device_id, 'app_version': app_version,
             'location_json': json.dumps(location, sort_keys=True),
             'workplace': gps['workplace'] if gps else None,
             'distance_m': gps['distance_m'] if gps else None,
@@ -177,5 +172,5 @@ def punch(supervisor, employee, request_id, log_type, timestamp, device_id, app_
         from maas_attendance_mobile.photos import save_private
         save_private(RECEIPT, receipt.name, content)
     finally:
-        frappe.flags.maas_test_punch = previous
+        frappe.flags[CONTEXT] = previous
     return dict(_reply(receipt.as_dict(), False), employee_name=result['employee_name'])

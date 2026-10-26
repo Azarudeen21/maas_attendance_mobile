@@ -7,19 +7,15 @@
   "field_order": [
     "company",
     "enabled",
-    "test_employee",
-    "require_test_photo",
-    "require_test_location",
+    "rules_section",
+    "require_photo",
+    "require_location",
+    "rules_column",
     "require_approved_device",
-    "enable_offline_test",
+    "allow_offline",
     "photo_retention_section",
     "photo_retention_days",
-    "enable_photo_cleanup",
-    "production_section",
-    "enable_production_attendance",
-    "enable_production_offline",
-    "production_require_photo",
-    "production_require_location"
+    "enable_photo_cleanup"
   ],
   "fields": [
     {
@@ -34,40 +30,47 @@
     {
       "fieldname": "enabled",
       "fieldtype": "Check",
-      "label": "Enable Company Test Attendance",
+      "label": "Enable Mobile Attendance",
       "default": "0",
-      "in_list_view": 1
+      "in_list_view": 1,
+      "description": "Employees of this company can use the mobile app when the site switch is on and their Employee boxes allow it."
     },
     {
-      "fieldname": "test_employee",
-      "fieldtype": "Link",
-      "options": "Employee",
-      "label": "Dedicated Test Employee",
-      "reqd": 0
+      "fieldname": "rules_section",
+      "fieldtype": "Section Break",
+      "label": "Check-in Rules"
     },
     {
-      "fieldname": "require_test_photo",
+      "fieldname": "require_photo",
       "fieldtype": "Check",
-      "label": "Require Punch Photo and GPS",
-      "default": "0"
+      "label": "Require Photo",
+      "default": "0",
+      "description": "A selfie and GPS are captured with every check-in. Employee photo boxes can override this per employee."
     },
     {
-      "fieldname": "require_test_location",
+      "fieldname": "require_location",
       "fieldtype": "Check",
-      "label": "Require GPS Workplace Check",
-      "default": "0"
+      "label": "Require GPS Workplace",
+      "default": "0",
+      "description": "Check-ins must be inside an enabled Mobile Attendance Workplace of this company."
+    },
+    {
+      "fieldname": "rules_column",
+      "fieldtype": "Column Break"
     },
     {
       "fieldname": "require_approved_device",
       "fieldtype": "Check",
       "label": "Require Approved Device",
-      "default": "0"
+      "default": "0",
+      "description": "Online check-ins need a phone approved by HR. Offline uploads always need one."
     },
     {
-      "fieldname": "enable_offline_test",
+      "fieldname": "allow_offline",
       "fieldtype": "Check",
-      "label": "Enable Offline Test Claims",
-      "default": "0"
+      "label": "Allow Offline",
+      "default": "0",
+      "description": "Employees with Offline Check In may save punches on the phone. The site Offline Sync switch must also be on."
     },
     {
       "fieldtype": "Section Break",
@@ -87,35 +90,6 @@
       "label": "Enable Automatic Photo Cleanup",
       "fieldname": "enable_photo_cleanup",
       "default": "0"
-    },
-    {
-      "fieldname": "production_section",
-      "label": "Production employee policy",
-      "fieldtype": "Section Break"
-    },
-    {
-      "fieldname": "enable_production_attendance",
-      "label": "Enable Company Production Attendance",
-      "default": "0",
-      "fieldtype": "Check"
-    },
-    {
-      "fieldname": "enable_production_offline",
-      "label": "Enable Company Production Offline Claims",
-      "default": "0",
-      "fieldtype": "Check"
-    },
-    {
-      "fieldname": "production_require_photo",
-      "label": "Require Production Photo and GPS",
-      "default": "1",
-      "fieldtype": "Check"
-    },
-    {
-      "fieldname": "production_require_location",
-      "label": "Require Production Workplace GPS",
-      "default": "1",
-      "fieldtype": "Check"
     }
   ],
   "permissions": [

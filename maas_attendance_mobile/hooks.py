@@ -33,5 +33,5 @@ doc_events = {
     }
 }
 
-after_install = ["maas_attendance_mobile.supervisor.ensure_role", "maas_attendance_mobile.employee_rules.ensure_fields"]
-after_migrate = ["maas_attendance_mobile.supervisor.ensure_role", "maas_attendance_mobile.employee_rules.ensure_fields"]
+after_install = ["maas_attendance_mobile.supervisor.ensure_role", "maas_attendance_mobile.policy.ensure_fields"]
+after_migrate = ["maas_attendance_mobile.supervisor.ensure_role", "maas_attendance_mobile.policy.ensure_fields"]

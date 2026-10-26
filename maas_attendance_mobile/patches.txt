@@ -1,3 +1,4 @@
 [pre_model_sync]
 
 [post_model_sync]
+maas_attendance_mobile.patches.v0_20.simplify_policy

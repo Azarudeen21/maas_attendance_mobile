@@ -4,153 +4,85 @@
  "module": "MAAS Attendance Mobile",
  "engine": "InnoDB",
  "field_order": [
-  "notice",
-  "test_policy_section",
-  "enable_test_attendance",
-  "use_company_test_policies",
-  "test_employee",
-  "capture_section",
-  "require_test_photo",
-  "require_test_location",
-  "require_approved_device",
+  "general_section",
+  "enable_mobile_attendance",
   "offline_section",
-  "enable_offline_test",
+  "enable_offline_sync",
   "site_setup_section",
   "enable_mobile_site_setup",
   "mobile_site_label",
   "mobile_oauth_client",
-  "production_section",
-  "enable_production_attendance",
-  "enable_production_offline",
   "face_section",
   "enable_face_recognition",
-  "enable_supervisor_checkin",
   "face_match_threshold",
-  "face_match_margin"
+  "face_match_margin",
+  "supervisor_section",
+  "enable_supervisor_checkin"
  ],
  "fields": [
   {
-   "fieldname": "notice",
-   "fieldtype": "HTML",
-   "label": "Test checkpoint",
-   "options": "<p>Development test only. All punches skip auto attendance. Offline claims require HR review. Face verification is not yet enabled.</p>"
-  },
-  {
-   "fieldname": "enable_test_attendance",
-   "fieldtype": "Check",
-   "label": "Enable Online Test Attendance",
-   "default": "0"
-  },
-  {
-   "fieldname": "test_employee",
-   "fieldtype": "Link",
-   "label": "Test Employee",
-   "options": "Employee",
-   "description": "Choose only your dedicated Mobile Test employee. This login must use the custom punch API."
-  },
-  {
-   "fieldname": "require_test_location",
-   "fieldtype": "Check",
-   "label": "Require GPS Workplace Check for Test Punches",
-   "default": "0",
-   "description": "Enable only after configuring an enabled Mobile Attendance Workplace for the test employee's company. Both IN and OUT require a fresh precise location."
-  },
-  {
-   "fieldname": "require_approved_device",
-   "fieldtype": "Check",
-   "label": "Require Approved Device for Test Punches",
-   "default": "0"
-  },
-  {
-   "fieldname": "enable_offline_test",
-   "fieldtype": "Check",
-   "label": "Enable Offline Test Claims",
-   "default": "0",
-   "description": "Approved devices only. Original time, photo and GPS upload within seven days. Enable automatic test acceptance to skip routine HR review."
-  },
-  {
-   "label": "Require Punch Photo and GPS",
-   "description": "Record the time when the punch button is pressed, then take a photo and capture GPS. Photos are private evidence; no identity or liveness verification is performed.",
-   "fieldname": "require_test_photo",
-   "fieldtype": "Check",
-   "default": "0"
-  },
-  {
-   "fieldname": "test_policy_section",
+   "fieldname": "general_section",
    "fieldtype": "Section Break",
-   "label": "Test policy"
+   "label": "General"
   },
   {
-   "fieldname": "capture_section",
-   "fieldtype": "Section Break",
-   "label": "Punch evidence"
+   "fieldname": "enable_mobile_attendance",
+   "fieldtype": "Check",
+   "label": "Enable Mobile Attendance",
+   "default": "0",
+   "description": "Master switch for app check-ins. A company also needs an enabled Mobile Attendance Company Policy, and each employee the Online or Offline box in the Mobile Check-in section of their Employee record."
   },
   {
    "fieldname": "offline_section",
    "fieldtype": "Section Break",
-   "label": "Offline review"
+   "label": "Offline Sync"
+  },
+  {
+   "fieldname": "enable_offline_sync",
+   "fieldtype": "Check",
+   "label": "Enable Offline Sync",
+   "default": "0",
+   "description": "Employees with Offline Check In save punches on the phone and upload them later; each becomes an Employee Checkin at its original time. The company policy must also allow offline. Only ordering conflicts wait for HR review."
   },
   {
    "fieldname": "site_setup_section",
    "fieldtype": "Section Break",
-   "label": "Mobile site connection"
+   "label": "Mobile Site Connection"
   },
   {
    "fieldname": "enable_mobile_site_setup",
    "fieldtype": "Check",
    "label": "Enable Mobile Site Connection",
    "default": "0",
-   "description": "Publish only the public client ID and site label for employee onboarding. This does not enable attendance."
+   "description": "Lets the app connect to this site by its address. Publishes only the public OAuth client ID and site name; it does not enable attendance."
   },
   {
    "fieldname": "mobile_site_label",
    "fieldtype": "Data",
-   "label": "Site Display Name"
+   "label": "Site Display Name",
+   "depends_on": "eval:doc.enable_mobile_site_setup",
+   "mandatory_depends_on": "eval:doc.enable_mobile_site_setup"
   },
   {
    "fieldname": "mobile_oauth_client",
    "fieldtype": "Link",
    "options": "OAuth Client",
    "label": "Mobile Public OAuth Client",
-   "description": "Authorization Code, Code response, Token Endpoint Auth Method None, all scope, MAAS redirect URI."
-  },
-  {
-   "fieldname": "use_company_test_policies",
-   "fieldtype": "Check",
-   "label": "Use Company Test Policies",
-   "default": "0",
-   "description": "Select a dedicated test employee per company using Mobile Attendance Company Policy. Site online/offline switches remain emergency gates; site evidence requirements are minimums."
-  },
-  {
-   "fieldname": "production_section",
-   "label": "Production attendance",
-   "fieldtype": "Section Break"
-  },
-  {
-   "fieldname": "enable_production_attendance",
-   "label": "Enable Production Attendance",
-   "description": "Requires explicit employee enrollment, enabled company policy and an approved device. Production checkins do not skip automatic attendance.",
-   "default": "0",
-   "fieldtype": "Check"
-  },
-  {
-   "fieldname": "enable_production_offline",
-   "label": "Enable Production Offline Claims",
-   "description": "Uploaded original evidence awaits HR review. Approval creates a production checkin.",
-   "default": "0",
-   "fieldtype": "Check"
+   "description": "OAuth Client with Authorization Code grant, Code response, Token Endpoint Auth Method None, scope all and redirect URI com.maasconsult.attendance:/oauth2redirect.",
+   "depends_on": "eval:doc.enable_mobile_site_setup",
+   "mandatory_depends_on": "eval:doc.enable_mobile_site_setup"
   },
   {
    "fieldname": "face_section",
-   "label": "Face recognition (pilot)",
-   "fieldtype": "Section Break"
+   "fieldtype": "Section Break",
+   "label": "Face Recognition"
   },
   {
    "fieldname": "enable_face_recognition",
-   "label": "Enable Face Recognition Pilot",
+   "label": "Enable Face Recognition",
    "fieldtype": "Check",
    "default": "0",
-   "description": "Allows HR to enroll employee face photos and test matches. Does not create checkins. Record employee consent before enrolling."
+   "description": "Lets HR enroll employee faces and use Test face match. Record employee consent before enrolling."
   },
   {
    "fieldname": "face_match_threshold",
@@ -158,7 +90,8 @@
    "fieldtype": "Float",
    "precision": "3",
    "default": "0.363",
-   "description": "Minimum cosine similarity (0.2 to 0.9). Raise it to reduce wrong matches; tune with Test face match on real staff photos."
+   "description": "Minimum cosine similarity (0.2 to 0.9). Raise it to reduce wrong matches; tune with Test face match on real staff photos.",
+   "depends_on": "eval:doc.enable_face_recognition"
   },
   {
    "fieldname": "face_match_margin",
@@ -166,14 +99,21 @@
    "fieldtype": "Float",
    "precision": "3",
    "default": "0.05",
-   "description": "The best employee must lead the next one by at least this much (0 to 0.3), otherwise the result is ambiguous."
+   "description": "The best employee must lead the next one by at least this much (0 to 0.3), otherwise the result is ambiguous.",
+   "depends_on": "eval:doc.enable_face_recognition"
+  },
+  {
+   "fieldname": "supervisor_section",
+   "fieldtype": "Section Break",
+   "label": "Supervisor Check-in",
+   "depends_on": "eval:doc.enable_face_recognition"
   },
   {
    "fieldname": "enable_supervisor_checkin",
    "label": "Enable Supervisor Face Check-in",
    "fieldtype": "Check",
    "default": "0",
-   "description": "Users with the MAAS Attendance Supervisor role can check in employees of their own company by face from an approved phone. Each employee still needs mobile attendance enabled."
+   "description": "Users with the MAAS Attendance Supervisor role can check in employees of their own company by face, from an approved phone. Scanned employees still need Online Check in."
   }
  ],
  "permissions": [

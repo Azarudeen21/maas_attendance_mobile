@@ -108,7 +108,7 @@ class PhotoPunchTests(unittest.TestCase):
         self.context = test_attendance.AttendanceTests(); self.context.setUp()
         import maas_attendance_mobile.photos
         self.photos = importlib.reload(maas_attendance_mobile.photos)
-        self.context.config['require_test_photo'] = '1'
+        self.context.rules['require_photo'] = True
         self.now = datetime.now(timezone.utc)
         self.context.args['timestamp'] = (self.now - timedelta(seconds=70)).isoformat()
         self.photo = image_payload(self.now - timedelta(seconds=10))
@@ -117,7 +117,7 @@ class PhotoPunchTests(unittest.TestCase):
     def tearDown(self): self.context.tearDown()
 
     def test_online_photo_links_private_receipt_and_uses_button_time(self):
-        self.context.config['require_test_location'] = '1'
+        self.context.rules['require_location'] = True
         with patch.object(self.photos, 'save_private') as save:
             self.context.submit(photo=self.photo, location=self.gps)
         save.assert_called_once()
@@ -132,7 +132,7 @@ class PhotoPunchTests(unittest.TestCase):
         self.assertEqual(self.context.created, [])
 
     def test_unchanged_photo_gps_can_retry_within_online_event_window(self):
-        self.context.config['require_test_location'] = '1'
+        self.context.rules['require_location'] = True
         started = self.now - timedelta(minutes=4)
         self.context.args['timestamp'] = started.isoformat()
         photo = image_payload(started + timedelta(seconds=10))
@@ -164,7 +164,7 @@ class OfflinePhotoTests(unittest.TestCase):
 
     def test_delayed_photo_uploaded_privately_without_base64_in_audit_json(self):
         event = datetime.fromisoformat(self.context.request['timestamp'])
-        self.context.context.config['require_test_photo'] = '1'
+        self.context.context.rules['require_photo'] = True
         self.context.request['photo'] = image_payload(event + timedelta(seconds=10))
         self.context.request['location'] = {'latitude': 24.7, 'longitude': 46.7, 'accuracy_m': 5, 'timestamp': (event + timedelta(seconds=15)).isoformat(), 'precise': True, 'is_mocked': False}
         with patch.object(self.photos, 'save_private') as save:

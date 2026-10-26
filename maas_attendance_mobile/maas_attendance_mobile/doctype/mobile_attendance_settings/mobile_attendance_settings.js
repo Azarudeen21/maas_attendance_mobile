@@ -1,25 +1,12 @@
 frappe.ui.form.on('Mobile Attendance Settings', {
   refresh(frm) {
-    frm.add_custom_button(__('HR controls'), () => frappe.set_route('maas-attendance-controls'));
-    frm.add_custom_button(__('Workplaces'), () => frappe.set_route('List', 'Mobile Attendance Workplace'));
-    frm.add_custom_button(__('Company test policies'), () => frappe.set_route('List', 'Mobile Attendance Company Policy'));
-    frm.add_custom_button(__('Production employee enrollments'), () => frappe.set_route('List', 'Mobile Attendance Employee'));
-    frm.add_custom_button(__('Face enrollments'), () => frappe.set_route('List', 'Mobile Attendance Face Enrollment'));
-    if (frappe.user_roles.includes('System Manager')) {
-      frm.add_custom_button(__('OAuth clients'), () => frappe.set_route('List', 'OAuth Client'));
-      frm.add_custom_button(__('Disable test submissions'), () => {
-        frappe.confirm(__('Disable online attendance and offline uploads? Saved records remain available for review.'), async () => {
-          await frm.set_value({enable_test_attendance: 0, enable_offline_test: 0});
-          await frm.save();
-        });
+    frm.add_custom_button(__('Mobile Attendance workspace'), () => frappe.set_route('mobile-attendance'));
+    if (!frappe.user_roles.includes('System Manager') || !frm.doc.enable_mobile_attendance) return;
+    frm.add_custom_button(__('Turn off mobile attendance'), () => {
+      frappe.confirm(__('Stop all app check-ins and offline uploads now? Saved records stay available.'), async () => {
+        await frm.set_value({enable_mobile_attendance: 0, enable_offline_sync: 0});
+        await frm.save();
       });
-      frm.add_custom_button(__('Disable all mobile submissions'), () => {
-        frappe.confirm(__('Disable production and test online/offline submissions? Existing audit records remain available.'), async () => {
-          await frm.set_value({enable_test_attendance: 0, enable_offline_test: 0,
-            enable_production_attendance: 0, enable_production_offline: 0});
-          await frm.save();
-        });
-      });
-    }
-  }
+    });
+  },
 });

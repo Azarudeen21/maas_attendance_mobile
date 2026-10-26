@@ -1,6 +1,0 @@
-{
-  "doctype": "Page", "name": "maas-attendance-controls",
-  "page_name": "maas-attendance-controls", "title": "MAAS Attendance Controls",
-  "module": "MAAS Attendance Mobile", "standard": "Yes",
-  "roles": [{"role": "HR Manager"}, {"role": "System Manager"}]
-}

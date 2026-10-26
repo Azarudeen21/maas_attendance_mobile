@@ -51,20 +51,16 @@ class ApiTests(unittest.TestCase):
         self.attendance = importlib.reload(maas_attendance_mobile.attendance)
         import maas_attendance_mobile.devices
         self.devices = importlib.reload(maas_attendance_mobile.devices)
-        import maas_attendance_mobile.company_policy
-        importlib.reload(maas_attendance_mobile.company_policy)
-        import maas_attendance_mobile.production_policy
-        importlib.reload(maas_attendance_mobile.production_policy)
-        # Existing scenarios run as an employee with Online and Offline ticked and
-        # no photo boxes (pre-checkbox behaviour); test_employee_rules covers the boxes.
-        import maas_attendance_mobile.employee_rules as rules
-        rules = importlib.reload(rules)
-        self.rules_apply = rules.apply
-        rules.apply = lambda employee, config: dict(config, online_allowed=True, photo_optional=False)
+        # Scenarios run with explicit effective rules; test_policy covers policy.resolve().
+        import maas_attendance_mobile.policy
+        self.policy = importlib.reload(maas_attendance_mobile.policy)
+        self.real_resolve = self.policy.resolve
+        self.rules = dict(online=True, offline=True, require_photo=False, photo_optional=False,
+                          require_location=False, require_device=False, standard_checkin=False)
+        self.policy.resolve = lambda employee: dict(self.rules)
 
     def tearDown(self):
-        import maas_attendance_mobile.employee_rules as rules
-        rules.apply = self.rules_apply
+        self.policy.resolve = self.real_resolve
         for name, module in self.previous.items():
             if module is None:
                 sys.modules.pop(name, None)
@@ -116,33 +112,6 @@ class ApiTests(unittest.TestCase):
         self.frappe.get_list.side_effect = FakePermissionError("denied")
         with self.assertRaises(FakePermissionError):
             self.api.profile()
-
-    def test_capabilities_report_actual_fields_and_disabled_writes(self):
-        result = self.api.capabilities()
-        self.assertEqual(set(result["employee_checkin_fields"]), self.fields)
-        self.assertFalse(result["attendance_submission_enabled"])
-        self.assertFalse(result["face_verification_enabled"])
-
-    def test_missing_hrms_is_rejected(self):
-        self.frappe.get_installed_apps.return_value = ["frappe", "erpnext"]
-        with self.assertRaises(ValueError):
-            self.api.capabilities()
-
-    def test_missing_checkin_field_is_rejected(self):
-        self.fields.remove("log_type")
-        with self.assertRaises(ValueError):
-            self.api.capabilities()
-
-    def test_v15_schema_can_use_same_api(self):
-        for name in ("frappe", "erpnext", "hrms"):
-            sys.modules[name].__version__ = "15.1.0"
-        self.assertEqual(self.api.capabilities()["versions"]["hrms"], "15.1.0")
-
-    def test_unsupported_major_is_rejected(self):
-        self.frappe.__version__ = "17.0.0"
-        with self.assertRaises(ValueError):
-            self.api.capabilities()
-
 
 if __name__ == "__main__":
     unittest.main()

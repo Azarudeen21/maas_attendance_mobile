@@ -3,7 +3,7 @@
  "autoname": "MAFE-.#####", "title_field": "employee_name", "track_changes": 1,
  "field_order": ["notice", "employee", "employee_name", "company", "column_break_main", "enabled", "source", "consent_confirmed", "photo_section", "photo", "face_score", "column_break_audit", "model_version", "enrolled_by", "enrolled_at", "image_sha256", "embedding"],
  "fields": [
-  {"fieldname": "notice", "fieldtype": "HTML", "label": "Pilot notice", "options": "<p>Pilot enrollment for supervisor face check-in. Use one front-facing, well-lit photo of this employee only. Face codes are computed on the server from the private photo; delete the enrollment to erase them.</p>"},
+  {"fieldname": "notice", "fieldtype": "HTML", "label": "Notice", "options": "<p>Use one front-facing, well-lit photo of this employee only, uploaded as a private file. Face codes are computed on the server; delete the enrollment to erase them.</p>"},
   {"fieldname": "employee", "fieldtype": "Link", "options": "Employee", "label": "Employee", "reqd": 1, "in_list_view": 1, "in_standard_filter": 1},
   {"fieldname": "employee_name", "fieldtype": "Data", "label": "Employee Name", "read_only": 1, "in_list_view": 1},
   {"fieldname": "company", "fieldtype": "Link", "options": "Company", "label": "Company", "read_only": 1, "in_standard_filter": 1},

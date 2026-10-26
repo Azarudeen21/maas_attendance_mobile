@@ -25,7 +25,6 @@
     "photo_cleanup",
     "test_mode",
     "event_company",
-    "automatically_accepted",
     "sync_note"
   ],
   "doctype": "DocType",
@@ -199,10 +198,11 @@
     },
     {
       "fieldname": "test_mode",
-      "label": "Test Mode",
+      "label": "Test Check-in (before 0.20)",
       "read_only": 1,
-      "default": "1",
-      "fieldtype": "Check"
+      "default": "0",
+      "fieldtype": "Check",
+      "description": "Set on records created while test mode existed (before version 0.20); those check-ins skipped automatic attendance."
     },
     {
       "fieldname": "event_company",
@@ -210,13 +210,6 @@
       "read_only": 1,
       "options": "Company",
       "fieldtype": "Link"
-    },
-    {
-      "fieldtype": "Check",
-      "read_only": 1,
-      "fieldname": "automatically_accepted",
-      "label": "Automatically Accepted",
-      "default": "0"
     },
     {
       "fieldtype": "Small Text",

@@ -17,7 +17,7 @@ class SupervisorTests(unittest.TestCase):
         self.frappe = self.base.frappe
         self.employee = self.base.employee  # Same row acts as the supervisor's own Employee.
         self.config = self.base.config
-        self.config.update(enable_face_recognition=1, enable_supervisor_checkin=1, test_employee='HR-EMP-WORKER')
+        self.config.update(enable_face_recognition=1, enable_supervisor_checkin=1)
         self.frappe.get_roles.return_value = ['Employee', 'MAAS Attendance Supervisor']
         self.frappe.session.user = 'employee@example.test'
         import maas_attendance_mobile.faces, maas_attendance_mobile.photos, maas_attendance_mobile.supervisor
@@ -63,7 +63,7 @@ class SupervisorTests(unittest.TestCase):
         self.assertFalse(self.base.created)
 
     def test_identify_reports_employee_without_mobile_attendance(self):
-        self.config['test_employee'] = 'SOMEONE-ELSE'
+        self.base.rules['online'] = False
         result = self.identify()
         self.assertFalse(result['attendance_enabled'])
         self.assertIn('not enabled', result['message'])
@@ -83,12 +83,12 @@ class SupervisorTests(unittest.TestCase):
     def test_confirmed_punch_creates_checkin_for_identified_employee(self):
         result = self.punch()
         checkin, receipt = self.base.created
-        self.assertEqual((checkin['employee'], checkin['log_type'], checkin['skip_auto_attendance']), ('HR-EMP-WORKER', 'IN', 1))
+        self.assertEqual((checkin['employee'], checkin['log_type'], checkin['skip_auto_attendance']), ('HR-EMP-WORKER', 'IN', 0))
         self.assertEqual((receipt['capture_mode'], receipt['supervisor'], receipt['face_score']),
                          ('Supervisor', 'employee@example.test', 0.82))
         self.assertEqual(receipt['registered_device'], 'DEVICE-REG')
         self.assertEqual(result['employee_name'], 'Worker One')
-        self.assertIsNone(self.frappe.flags.get('maas_test_punch'))
+        self.assertIsNone(self.frappe.flags.get('maas_punch'))
         import maas_attendance_mobile.photos as photos
         photos.save_private.assert_called_once()
 
@@ -99,9 +99,9 @@ class SupervisorTests(unittest.TestCase):
         self.assertFalse(self.base.created)
 
     def test_employee_policy_and_evidence_still_apply(self):
-        self.config['test_employee'] = 'SOMEONE-ELSE'
+        self.base.rules['online'] = False
         with self.assertRaisesRegex(test_api.FakePermissionError, 'not enabled'): self.punch()
-        self.config['test_employee'] = 'HR-EMP-WORKER'
+        self.base.rules['online'] = True
         with self.assertRaises(ValueError): self.punch(location=None)
         self.base.latest = {'name': 'C1', 'log_type': 'IN', 'time': datetime(2020, 1, 1)}
         with self.assertRaisesRegex(ValueError, 'Already checked in'): self.punch()
@@ -115,10 +115,10 @@ class SupervisorTests(unittest.TestCase):
         self.assertFalse(self.base.created)
         with self.assertRaisesRegex(ValueError, 'already used'): self.punch(log_type='OUT')
 
-    def test_capabilities_report_supervisor_availability(self):
-        self.assertTrue(self.base.base.api.capabilities()['supervisor_checkin_enabled'])
+    def test_status_reports_supervisor_availability(self):
+        self.assertTrue(self.base.base.api.attendance_status()['supervisor_checkin_enabled'])
         self.config['enable_face_recognition'] = 0
-        self.assertFalse(self.base.base.api.capabilities()['supervisor_checkin_enabled'])
+        self.assertFalse(self.base.base.api.attendance_status()['supervisor_checkin_enabled'])
         self.config['enable_face_recognition'] = 1
         self.assertTrue(self.base.base.api.attendance_status()['supervisor_checkin_enabled'])
         self.frappe.get_roles.return_value = ['Employee']

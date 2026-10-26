@@ -1,0 +1,263 @@
+{
+ "doctype": "Workspace",
+ "name": "Mobile Attendance",
+ "label": "Mobile Attendance",
+ "title": "Mobile Attendance",
+ "module": "MAAS Attendance Mobile",
+ "public": 1,
+ "is_hidden": 0,
+ "hide_custom": 0,
+ "icon": "milestone",
+ "type": "Workspace",
+ "parent_page": "",
+ "for_user": "",
+ "sequence_id": 30.0,
+ "content": "[{\"id\": \"maas-h-today\", \"type\": \"header\", \"data\": {\"text\": \"<span class=\\\"h4\\\"><b>Today</b></span>\", \"col\": 12}}, {\"id\": \"maas-nc-0\", \"type\": \"number_card\", \"data\": {\"number_card_name\": \"Pending Mobile Devices\", \"col\": 4}}, {\"id\": \"maas-nc-1\", \"type\": \"number_card\", \"data\": {\"number_card_name\": \"Offline Claims to Review\", \"col\": 4}}, {\"id\": \"maas-nc-2\", \"type\": \"number_card\", \"data\": {\"number_card_name\": \"App Check-ins Today\", \"col\": 4}}, {\"id\": \"maas-sp-1\", \"type\": \"spacer\", \"data\": {\"col\": 12}}, {\"id\": \"maas-h-short\", \"type\": \"header\", \"data\": {\"text\": \"<span class=\\\"h4\\\"><b>Shortcuts</b></span>\", \"col\": 12}}, {\"id\": \"maas-sc-0\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Offline Claims to Review\", \"col\": 3}}, {\"id\": \"maas-sc-1\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Pending Devices\", \"col\": 3}}, {\"id\": \"maas-sc-2\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Employee Checkin\", \"col\": 3}}, {\"id\": \"maas-sc-3\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Face Enrollment\", \"col\": 3}}, {\"id\": \"maas-sc-4\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Mobile Attendance Settings\", \"col\": 3}}, {\"id\": \"maas-sp-2\", \"type\": \"spacer\", \"data\": {\"col\": 12}}, {\"id\": \"maas-h-links\", \"type\": \"header\", \"data\": {\"text\": \"<span class=\\\"h4\\\"><b>Records and setup</b></span>\", \"col\": 12}}, {\"id\": \"maas-cd-0\", \"type\": \"card\", \"data\": {\"card_name\": \"Check-ins\", \"col\": 4}}, {\"id\": \"maas-cd-1\", \"type\": \"card\", \"data\": {\"card_name\": \"Devices & Locations\", \"col\": 4}}, {\"id\": \"maas-cd-2\", \"type\": \"card\", \"data\": {\"card_name\": \"Face Recognition\", \"col\": 4}}, {\"id\": \"maas-cd-3\", \"type\": \"card\", \"data\": {\"card_name\": \"Setup\", \"col\": 4}}, {\"id\": \"maas-cd-4\", \"type\": \"card\", \"data\": {\"card_name\": \"Audit\", \"col\": 4}}]",
+ "roles": [
+  {
+   "role": "HR Manager"
+  },
+  {
+   "role": "System Manager"
+  }
+ ],
+ "number_cards": [
+  {
+   "number_card_name": "Pending Mobile Devices",
+   "label": "Pending Mobile Devices"
+  },
+  {
+   "number_card_name": "Offline Claims to Review",
+   "label": "Offline Claims to Review"
+  },
+  {
+   "number_card_name": "App Check-ins Today",
+   "label": "App Check-ins Today"
+  }
+ ],
+ "shortcuts": [
+  {
+   "label": "Offline Claims to Review",
+   "type": "DocType",
+   "link_to": "Mobile Attendance Offline Claim",
+   "doc_view": "List",
+   "color": "Red",
+   "format": "{} Pending",
+   "stats_filter": "{\"status\": \"Pending Review\"}"
+  },
+  {
+   "label": "Pending Devices",
+   "type": "DocType",
+   "link_to": "Mobile Attendance Device",
+   "doc_view": "List",
+   "color": "Orange",
+   "format": "{} Pending",
+   "stats_filter": "{\"status\": \"Pending\"}"
+  },
+  {
+   "label": "Employee Checkin",
+   "type": "DocType",
+   "link_to": "Employee Checkin",
+   "doc_view": "List",
+   "color": "Green",
+   "format": "{} Today",
+   "stats_filter": "[[\"Employee Checkin\", \"time\", \"Timespan\", \"today\", false]]"
+  },
+  {
+   "label": "Face Enrollment",
+   "type": "DocType",
+   "link_to": "Mobile Attendance Face Enrollment",
+   "doc_view": "List",
+   "color": "Grey"
+  },
+  {
+   "label": "Mobile Attendance Settings",
+   "type": "DocType",
+   "link_to": "Mobile Attendance Settings",
+   "color": "Grey"
+  }
+ ],
+ "links": [
+  {
+   "type": "Card Break",
+   "label": "Check-ins",
+   "link_count": 3,
+   "hidden": 0,
+   "is_query_report": 0,
+   "onboard": 0
+  },
+  {
+   "type": "Link",
+   "label": "Employee Checkin",
+   "link_type": "DocType",
+   "link_to": "Employee Checkin",
+   "link_count": 0,
+   "hidden": 0,
+   "is_query_report": 0,
+   "onboard": 0,
+   "dependencies": "",
+   "only_for": ""
+  },
+  {
+   "type": "Link",
+   "label": "Mobile Attendance Transaction",
+   "link_type": "DocType",
+   "link_to": "Mobile Attendance Transaction",
+   "link_count": 0,
+   "hidden": 0,
+   "is_query_report": 0,
+   "onboard": 0,
+   "dependencies": "",
+   "only_for": ""
+  },
+  {
+   "type": "Link",
+   "label": "Mobile Attendance Offline Claim",
+   "link_type": "DocType",
+   "link_to": "Mobile Attendance Offline Claim",
+   "link_count": 0,
+   "hidden": 0,
+   "is_query_report": 0,
+   "onboard": 0,
+   "dependencies": "",
+   "only_for": ""
+  },
+  {
+   "type": "Card Break",
+   "label": "Devices & Locations",
+   "link_count": 2,
+   "hidden": 0,
+   "is_query_report": 0,
+   "onboard": 0
+  },
+  {
+   "type": "Link",
+   "label": "Mobile Attendance Device",
+   "link_type": "DocType",
+   "link_to": "Mobile Attendance Device",
+   "link_count": 0,
+   "hidden": 0,
+   "is_query_report": 0,
+   "onboard": 0,
+   "dependencies": "",
+   "only_for": ""
+  },
+  {
+   "type": "Link",
+   "label": "Mobile Attendance Workplace",
+   "link_type": "DocType",
+   "link_to": "Mobile Attendance Workplace",
+   "link_count": 0,
+   "hidden": 0,
+   "is_query_report": 0,
+   "onboard": 0,
+   "dependencies": "",
+   "only_for": ""
+  },
+  {
+   "type": "Card Break",
+   "label": "Face Recognition",
+   "link_count": 1,
+   "hidden": 0,
+   "is_query_report": 0,
+   "onboard": 0
+  },
+  {
+   "type": "Link",
+   "label": "Mobile Attendance Face Enrollment",
+   "link_type": "DocType",
+   "link_to": "Mobile Attendance Face Enrollment",
+   "link_count": 0,
+   "hidden": 0,
+   "is_query_report": 0,
+   "onboard": 0,
+   "dependencies": "",
+   "only_for": ""
+  },
+  {
+   "type": "Card Break",
+   "label": "Setup",
+   "link_count": 4,
+   "hidden": 0,
+   "is_query_report": 0,
+   "onboard": 0
+  },
+  {
+   "type": "Link",
+   "label": "Mobile Attendance Settings",
+   "link_type": "DocType",
+   "link_to": "Mobile Attendance Settings",
+   "link_count": 0,
+   "hidden": 0,
+   "is_query_report": 0,
+   "onboard": 0,
+   "dependencies": "",
+   "only_for": ""
+  },
+  {
+   "type": "Link",
+   "label": "Mobile Attendance Company Policy",
+   "link_type": "DocType",
+   "link_to": "Mobile Attendance Company Policy",
+   "link_count": 0,
+   "hidden": 0,
+   "is_query_report": 0,
+   "onboard": 0,
+   "dependencies": "",
+   "only_for": ""
+  },
+  {
+   "type": "Link",
+   "label": "Employee",
+   "link_type": "DocType",
+   "link_to": "Employee",
+   "link_count": 0,
+   "hidden": 0,
+   "is_query_report": 0,
+   "onboard": 0,
+   "dependencies": "",
+   "only_for": ""
+  },
+  {
+   "type": "Link",
+   "label": "OAuth Client",
+   "link_type": "DocType",
+   "link_to": "OAuth Client",
+   "link_count": 0,
+   "hidden": 0,
+   "is_query_report": 0,
+   "onboard": 0,
+   "dependencies": "",
+   "only_for": ""
+  },
+  {
+   "type": "Card Break",
+   "label": "Audit",
+   "link_count": 1,
+   "hidden": 0,
+   "is_query_report": 0,
+   "onboard": 0
+  },
+  {
+   "type": "Link",
+   "label": "Mobile Attendance Photo Cleanup",
+   "link_type": "DocType",
+   "link_to": "Mobile Attendance Photo Cleanup",
+   "link_count": 0,
+   "hidden": 0,
+   "is_query_report": 0,
+   "onboard": 0,
+   "dependencies": "",
+   "only_for": ""
+  }
+ ],
+ "charts": [],
+ "quick_lists": [],
+ "custom_blocks": [],
+ "creation": "2026-10-26 12:00:00.000000",
+ "modified": "2026-10-26 12:00:00.000000",
+ "modified_by": "Administrator",
+ "owner": "Administrator",
+ "docstatus": 0,
+ "idx": 0
+}

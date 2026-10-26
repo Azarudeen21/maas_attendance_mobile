@@ -26,42 +26,38 @@ class OfflineControllerTests(unittest.TestCase):
         self.doc.status = 'Approved'
         with self.assertRaises(ValueError): self.doc.validate()
 
-    def test_original_evidence_and_final_reviews_are_immutable(self):
+    def pending_before(self):
         self.context.frappe.flags.maas_offline_write = self.doc.request_id
         self.doc.before = test_device_controller.Document()
         self.doc.before.request_id = self.doc.request_id
         self.doc.before.status = 'Pending Review'
-        self.doc.status = 'Rejected'
+
+    def test_original_evidence_and_final_reviews_are_immutable(self):
+        self.pending_before()
+        self.doc.status = 'Rejected'; self.doc.reviewed_by = 'hr@example.test'
         self.doc.payload_json = 'changed evidence'
         with self.assertRaises(test_api.FakePermissionError): self.doc.validate()
         self.doc.payload_json = None
         self.doc.validate()
+        self.doc.reviewed_by = None
+        with self.assertRaisesRegex(ValueError, 'reviewer'): self.doc.validate()
         self.doc.before.status = 'Approved'
         with self.assertRaises(ValueError): self.doc.validate()
 
-    def test_auto_approval_cannot_be_forged_or_change_immutable_mode(self):
-        self.context.frappe.flags.maas_offline_write = self.doc.request_id
-        self.doc.before = test_device_controller.Document()
-        self.doc.before.request_id = self.doc.request_id
-        self.doc.before.status = 'Pending Review'
+    def test_only_sync_can_approve_without_a_reviewer(self):
+        self.pending_before()
         self.doc.status = 'Approved'; self.doc.checkin = 'CHECKIN'
-        self.doc.automatically_accepted = 1; self.doc.test_mode = 1
-        with self.assertRaises(test_api.FakePermissionError): self.doc.validate()
-        self.context.frappe.flags.maas_offline_auto_accept = self.doc.request_id
-        with self.assertRaises(test_api.FakePermissionError): self.doc.validate()
-        self.doc.before.test_mode = 1
+        with self.assertRaisesRegex(ValueError, 'reviewer'): self.doc.validate()
+        self.context.frappe.flags.maas_offline_sync = self.doc.request_id
         self.doc.validate()
-        self.doc.test_mode = 0; self.doc.before.test_mode = 0
-        self.doc.validate()
-        self.doc.before.status = 'Approved'
-        with self.assertRaises(ValueError): self.doc.validate()
+        self.doc.reviewed_by = 'someone@example.test'
+        with self.assertRaises(test_api.FakePermissionError): self.doc.validate()
+        self.doc.reviewed_by = None; self.doc.checkin = None
+        with self.assertRaises(test_api.FakePermissionError): self.doc.validate()
 
-    def test_pending_auto_conflict_can_only_update_note(self):
-        self.context.frappe.flags.maas_offline_write = self.doc.request_id
-        self.context.frappe.flags.maas_offline_auto_accept = self.doc.request_id
-        self.doc.before = test_device_controller.Document()
-        self.doc.before.request_id = self.doc.request_id
-        self.doc.before.status = 'Pending Review'
+    def test_pending_sync_conflict_can_only_update_note(self):
+        self.pending_before()
+        self.context.frappe.flags.maas_offline_sync = self.doc.request_id
         self.doc.sync_note = 'Attendance changed after capture'
         self.doc.validate()
         self.doc.checkin = 'FORGED'

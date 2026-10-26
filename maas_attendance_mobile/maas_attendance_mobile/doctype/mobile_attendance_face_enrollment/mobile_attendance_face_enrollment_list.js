@@ -1,4 +1,4 @@
-// HR pilot tools. Test photos are analysed in memory on the server and never stored.
+// HR face tools. Test photos are analysed in memory on the server and never stored.
 frappe.listview_settings['Mobile Attendance Face Enrollment'] = {
   onload(listview) {
     if (!frappe.user_roles.some(role => ['HR Manager', 'System Manager'].includes(role))) return;

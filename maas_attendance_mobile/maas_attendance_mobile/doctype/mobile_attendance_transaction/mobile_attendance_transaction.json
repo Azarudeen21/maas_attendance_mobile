@@ -96,9 +96,10 @@
     {
       "fieldname": "test_mode",
       "fieldtype": "Check",
-      "label": "Test Mode",
-      "default": "1",
-      "read_only": 1
+      "label": "Test Check-in (before 0.20)",
+      "default": "0",
+      "read_only": 1,
+      "description": "Set on records created while test mode existed (before version 0.20); those check-ins skipped automatic attendance."
     },
     {
       "fieldname": "location_json",

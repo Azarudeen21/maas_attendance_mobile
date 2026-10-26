@@ -14,7 +14,6 @@ class OfflineTests(unittest.TestCase):
         self.context.setUp()
         self.frappe = self.context.frappe
         self.frappe.db.exists = Mock(return_value=False)
-        self.context.config['enable_offline_test'] = '1'
         self.frappe.get_all.return_value = []
         import maas_attendance_mobile.offline
         self.service = importlib.reload(maas_attendance_mobile.offline)
@@ -46,12 +45,11 @@ class OfflineTests(unittest.TestCase):
         if value['doctype'] == self.service.CLAIM:
             for key, item in value.items(): setattr(doc, key, item)
             doc.reviewed_by = None
-            doc.automatically_accepted = 0
             doc.sync_note = None
             doc.user = 'employee@example.test'
             doc.get.side_effect = lambda key, default=None: value.get(key, default)
             doc.as_dict.side_effect = lambda: dict(value, name=doc.name, status=doc.status, checkin=doc.checkin,
-                automatically_accepted=getattr(doc, 'automatically_accepted', 0), sync_note=getattr(doc, 'sync_note', None))
+                sync_note=getattr(doc, 'sync_note', None))
             doc.save.return_value = doc
             self.doc = doc
         return doc
@@ -77,9 +75,9 @@ class OfflineTests(unittest.TestCase):
         result = self.submit()  # No acceptance flag or photo needed.
         self.assertEqual(result['status'], 'Approved')
         self.assertEqual(result['checkin'], 'CHECKIN-TEST')
-        self.assertTrue(result['automatically_accepted'])
-        self.assertTrue(result['skip_auto_attendance'])
-        self.assertEqual(self.context.created[-1]['skip_auto_attendance'], 1)
+        self.assertNotIn('automatically_accepted', result)
+        self.assertEqual(self.context.created[-1]['skip_auto_attendance'], 0)
+        self.assertTrue(self.context.created[-1]['device_id'].startswith('MAAS-OFFLINE:'))
         self.assertTrue(self.submit()['duplicate'])
         self.assertEqual(len(self.context.created), 2)
 
@@ -87,7 +85,6 @@ class OfflineTests(unittest.TestCase):
         self.context.latest = {'name': 'CHANGED', 'log_type': 'OUT', 'time': datetime.now()}
         result = self.submit()
         self.assertEqual(result['status'], 'Pending Review')
-        self.assertFalse(result['automatically_accepted'])
         self.assertIsNone(result['checkin'])
         self.assertEqual(len(self.context.created), 1)
 
@@ -113,9 +110,9 @@ class OfflineTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'different claim'): self.submit()
 
     def test_gate_device_and_age_reject_without_inserts(self):
-        self.context.config['enable_offline_test'] = '0'
+        self.context.rules['offline'] = False
         with self.assertRaises(test_api.FakePermissionError): self.submit()
-        self.context.config['enable_offline_test'] = '1'
+        self.context.rules['offline'] = True
         self.service.require_approved.side_effect = test_api.FakePermissionError('revoked')
         with self.assertRaises(test_api.FakePermissionError): self.submit()
         self.service.require_approved.side_effect = None
@@ -147,7 +144,7 @@ class OfflineTests(unittest.TestCase):
         self.assertEqual(response['checkin'], 'CHECKIN-TEST')
         checkin = self.context.created[-1]
         self.assertEqual(checkin['employee'], self.context.employee['name'])
-        self.assertEqual(checkin['skip_auto_attendance'], 1)
+        self.assertEqual(checkin['skip_auto_attendance'], 0)
         self.assertTrue(self.service.review(REQUEST, 'Approved', 'Confirmed test evidence')['duplicate'])
         self.assertEqual(len(self.context.created), 2)
         with self.assertRaisesRegex(ValueError, 'already final'): self.service.review(REQUEST, 'Rejected', 'Reject now')
@@ -172,7 +169,7 @@ class OfflineTests(unittest.TestCase):
         self.assertEqual(len(self.context.created), 1)
 
     def test_delayed_gps_is_checked_at_event_time_and_current_workplace(self):
-        self.context.config['require_test_location'] = '1'
+        self.context.rules['require_location'] = True
         self.frappe.get_all.return_value = [dict(name='Office', latitude=24.7, longitude=46.7, radius_m=100, max_accuracy_m=30)]
         self.request['location'] = {'latitude': 24.7, 'longitude': 46.7, 'accuracy_m': 5, 'timestamp': self.request['timestamp'], 'precise': True, 'is_mocked': False}
         self.submit()

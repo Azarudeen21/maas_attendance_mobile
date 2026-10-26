@@ -24,7 +24,8 @@ class AttendanceTests(unittest.TestCase):
         self.frappe = self.base.frappe
         self.service = self.base.attendance
         self.employee = self.frappe.get_list.return_value[0]
-        self.config = {'enable_test_attendance': '1', 'test_employee': self.employee['name']}
+        self.rules = self.base.rules
+        self.config = {}
         self.frappe.db.get_singles_dict.return_value = self.config
         self.frappe.flags = Flags()
         self.frappe.db.exists = Mock(side_effect=lambda doctype, name: doctype == 'Employee Checkin')
@@ -84,12 +85,12 @@ class AttendanceTests(unittest.TestCase):
     def test_new_punch_forces_employee_and_skip_auto_attendance(self):
         result = self.submit()
         self.assertEqual(self.created[0]['employee'], self.employee['name'])
-        self.assertEqual(self.created[0]['skip_auto_attendance'], 1)
-        self.assertTrue(self.created[0]['device_id'].startswith('MAAS-TEST:'))
+        self.assertEqual(self.created[0]['skip_auto_attendance'], 0)
+        self.assertTrue(self.created[0]['device_id'].startswith('MAAS:'))
         self.assertEqual(self.created[1]['request_id'], REQUEST)
         self.assertFalse(result['duplicate'])
         self.frappe.db.commit.assert_not_called()
-        self.assertIsNone(self.frappe.flags.get('maas_test_punch'))
+        self.assertIsNone(self.frappe.flags.get('maas_punch'))
         employee_read = next(c for c in self.frappe.db.get_value.call_args_list
                              if c.args[0] == 'Employee' and isinstance(c.args[2], list))
         self.assertTrue(employee_read.kwargs['for_update'])
@@ -99,20 +100,20 @@ class AttendanceTests(unittest.TestCase):
                     timestamp=self.args['timestamp'], precise=True, is_mocked=False)
 
     def test_gps_policy_requires_location_before_creating_records(self):
-        self.config['require_test_location'] = '1'
+        self.rules['require_location'] = True
         with self.assertRaisesRegex(ValueError, 'GPS location is required'):
             self.submit()
         self.frappe.get_doc.assert_not_called()
 
     def test_device_requirement_rejects_missing_credentials_before_writes(self):
-        self.config['require_approved_device'] = '1'
+        self.rules['require_device'] = True
         with self.assertRaises(test_api.FakePermissionError):
             self.submit()
         self.frappe.get_doc.assert_not_called()
 
     def test_approved_device_checked_even_for_exact_receipt_retry(self):
         from unittest.mock import patch
-        self.config['require_approved_device'] = '1'
+        self.rules['require_device'] = True
         self.receipt = self.saved_receipt()
         with patch('maas_attendance_mobile.devices.require_approved', return_value='REGISTERED') as check:
             self.assertTrue(self.submit(device_secret='a'*64)['duplicate'])
@@ -123,7 +124,7 @@ class AttendanceTests(unittest.TestCase):
 
     def test_new_approved_device_receipt_does_not_store_secret(self):
         from unittest.mock import patch
-        self.config['require_approved_device'] = '1'
+        self.rules['require_device'] = True
         with patch('maas_attendance_mobile.devices.require_approved', return_value='REGISTERED'):
             self.submit(device_secret='a'*64)
         self.assertEqual(self.created[1]['registered_device'], 'REGISTERED')
@@ -131,7 +132,7 @@ class AttendanceTests(unittest.TestCase):
         self.assertNotIn('device_secret', self.created[1])
 
     def test_gps_uses_server_company_and_records_evidence(self):
-        self.config['require_test_location'] = '1'
+        self.rules['require_location'] = True
         self.submit(location=self.gps())
         self.assertEqual(self.frappe.get_all.call_args.kwargs['filters'], {'company': 'Test Company', 'enabled': 1})
         self.assertEqual(self.created[0]['latitude'], 24.7)
@@ -139,7 +140,7 @@ class AttendanceTests(unittest.TestCase):
         self.assertEqual(self.created[1]['accuracy_m'], 5)
 
     def test_rejected_location_creates_no_records(self):
-        self.config['require_test_location'] = '1'
+        self.rules['require_location'] = True
         for changes in [dict(latitude=25), dict(precise=False), dict(is_mocked=True), dict(accuracy_m=100)]:
             with self.assertRaises(ValueError):
                 self.submit(location=dict(self.gps(), **changes))
@@ -147,7 +148,7 @@ class AttendanceTests(unittest.TestCase):
 
     def test_gps_retry_does_not_recheck_changed_workplace_policy(self):
         from maas_attendance_mobile.geofence import parse_location
-        self.config['require_test_location'] = '1'
+        self.rules['require_location'] = True
         gps = self.gps()
         payload, _ = parse_request(**self.args)
         payload['location'] = parse_location(gps)[0]
@@ -159,12 +160,20 @@ class AttendanceTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.submit(location=dict(gps, latitude=25))
 
-    def test_default_disabled_and_wrong_allowlist_create_nothing(self):
-        for config in ({}, {'enable_test_attendance': '1', 'test_employee': 'OTHER'}):
-            self.frappe.db.get_singles_dict.return_value = config
-            with self.assertRaises(test_api.FakePermissionError):
-                self.submit()
+    def test_online_needs_the_online_channel_and_names_the_alternative(self):
+        self.rules.update(online=False, offline=True)
+        with self.assertRaisesRegex(test_api.FakePermissionError, 'Use offline attendance'):
+            self.submit()
+        self.rules['offline'] = False
+        with self.assertRaisesRegex(test_api.FakePermissionError, 'not enabled for your account'):
+            self.submit()
         self.frappe.get_doc.assert_not_called()
+
+    def test_old_app_mode_is_accepted_and_bound_into_retry_hash(self):
+        self.assertFalse(self.submit(attendance_mode='production')['duplicate'])
+        payload, _ = parse_request(**self.args)
+        self.assertNotEqual(self.created[1]['request_hash'], request_hash(payload, self.employee['name'], self.frappe.session.user))
+        self.assertNotIn('test_mode', self.created[1])
 
     def test_identity_revalidated_under_lock(self):
         self.employee['status'] = 'Left'
@@ -200,22 +209,42 @@ class AttendanceTests(unittest.TestCase):
         self.frappe.get_doc.side_effect = [self.get_doc({'doctype': 'Employee Checkin'}), ValueError('receipt failure')]
         with self.assertRaisesRegex(ValueError, 'receipt failure'):
             self.submit()
-        self.assertIsNone(self.frappe.flags.get('maas_test_punch'))
+        self.assertIsNone(self.frappe.flags.get('maas_punch'))
         self.frappe.db.commit.assert_not_called()
 
-    def test_direct_standard_write_for_test_login_rejected_even_when_disabled(self):
-        doc = types.SimpleNamespace(employee='OTHER', is_new=lambda: True)
-        self.config['enable_test_attendance'] = '0'
-        with self.assertRaises(test_api.FakePermissionError):
-            self.service.guard_checkin(doc)
+    def app_user(self):
+        self.frappe.get_all = Mock(return_value=[{'name': self.employee['name'], 'maas_online_checkin': 1, 'maas_offline_checkin': 0}])
+        return types.SimpleNamespace(employee=self.employee['name'], is_new=lambda: True)
 
-    def test_other_admin_workflow_unaffected(self):
+    def test_app_user_cannot_write_own_checkin_directly_even_when_switched_off(self):
+        doc = self.app_user()
+        self.rules['online'] = False
+        with self.assertRaisesRegex(test_api.FakePermissionError, 'mobile app'):
+            self.service.guard_checkin(doc)
+        with self.assertRaises(test_api.FakePermissionError):
+            self.service.guard_delete(doc)
+
+    def test_service_context_is_allowed_for_own_new_checkin(self):
+        doc = self.app_user()
+        self.frappe.flags.maas_punch = dict(employee=doc.employee, user=self.frappe.session.user, request_id=REQUEST)
+        self.service.guard_checkin(doc)
+
+    def test_hr_and_non_app_users_are_unaffected(self):
+        self.app_user()
+        self.service.guard_checkin(types.SimpleNamespace(employee='SOMEONE-ELSE', is_new=lambda: True))
+        self.service.guard_delete(types.SimpleNamespace(employee='SOMEONE-ELSE'))
+        self.frappe.get_all = Mock(return_value=[])
         self.frappe.session.user = 'Administrator'
-        self.service.guard_checkin(types.SimpleNamespace(employee='OTHER'))
+        self.service.guard_checkin(types.SimpleNamespace(employee=self.employee['name'], is_new=lambda: True))
 
     def test_guard_rejects_saved_record_and_wrong_context(self):
-        doc = types.SimpleNamespace(employee=self.employee['name'], is_new=lambda: False)
-        self.frappe.flags.maas_test_punch = dict(employee=doc.employee, user=self.frappe.session.user)
+        doc = self.app_user()
+        doc.is_new = lambda: False
+        self.frappe.flags.maas_punch = dict(employee=doc.employee, user=self.frappe.session.user)
+        with self.assertRaises(test_api.FakePermissionError):
+            self.service.guard_checkin(doc)
+        doc.is_new = lambda: True
+        self.frappe.flags.maas_punch = dict(employee='OTHER', user=self.frappe.session.user)
         with self.assertRaises(test_api.FakePermissionError):
             self.service.guard_checkin(doc)
 
@@ -232,21 +261,3 @@ class AttendanceTests(unittest.TestCase):
             self.base.api.punch(**self.args, employee='OTHER')
         with self.assertRaises(TypeError):
             self.base.api.punch(**self.args, skip_auto_attendance=0)
-
-    def test_company_policy_applies_to_status_and_punch_and_denies_other_employee(self):
-        original = self.get_value
-        row = {'enabled': 1, 'test_employee': self.employee['name'], 'enable_offline_test': 0}
-        self.config.update(use_company_test_policies=1, test_employee='LEGACY')
-        self.frappe.db.get_value.side_effect = lambda dt, name, field, **kw: row if dt == 'Mobile Attendance Company Policy' else original(dt, name, field, **kw)
-        self.assertTrue(self.service.status(self.employee)['online_test_submission_enabled'])
-        self.assertFalse(self.submit()['duplicate'])
-        row['test_employee'] = 'OTHER'
-        self.assertFalse(self.service.status(self.employee)['online_test_submission_enabled'])
-        with self.assertRaises(test_api.FakePermissionError):
-            self.submit()
-
-    def test_disabled_company_test_login_cannot_use_standard_checkin_route(self):
-        self.config.update(use_company_test_policies=1, test_employee=None)
-        self.frappe.get_all.return_value = [{'test_employee': self.employee['name']}]
-        with self.assertRaises(test_api.FakePermissionError):
-            self.service.guard_checkin(types.SimpleNamespace(employee='OTHER', is_new=lambda: True))
