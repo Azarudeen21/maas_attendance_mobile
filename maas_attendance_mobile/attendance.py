@@ -47,7 +47,7 @@ def latest_checkin(employee, *, lock=False):
 def status(employee):
     config = settings(employee["name"])
     latest = latest_checkin(employee["name"])
-    from maas_attendance_mobile.offline import enabled, automatic_enabled
+    from maas_attendance_mobile.offline import enabled
     from maas_attendance_mobile.supervisor import available as supervisor_available
     return {
         "api_version": 1, "test_mode": not bool(config.get('production_mode')),
@@ -62,7 +62,7 @@ def status(employee):
         "approved_device_required": str(config.get("require_approved_device", 0)) == "1",
         "offline_test_submission_enabled": enabled(employee['name'], config) and not config.get('production_mode', False),
         "offline_submission_enabled": enabled(employee['name'], config),
-        "offline_auto_accept_enabled": enabled(employee['name'], config) and automatic_enabled(config),
+        "offline_auto_accept_enabled": enabled(employee['name'], config),
         "photo_required": str(config.get('require_test_photo', 0)) == '1',
         "photo_optional": bool(config.get('photo_optional')),
         "standard_checkin": bool(config.get('standard_checkin')),

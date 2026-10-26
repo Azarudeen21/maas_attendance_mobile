@@ -27,9 +27,5 @@ class MobileAttendanceCompanyPolicy(Document):
                 require_file_guard()
         if self.get('enable_production_offline') in (1, '1', True) and self.get('enable_production_attendance') not in (1, '1', True):
             frappe.throw('Enable company production attendance before enabling production offline claims.')
-        if self.get('production_auto_accept_offline') in (1, '1', True):
-            if any(self.get(field) not in (1, '1', True) for field in
-                   ('enable_production_offline', 'production_require_photo', 'production_require_location')):
-                frappe.throw('Automatic offline acceptance requires production offline, photo and workplace GPS checks.')
         if self.get('enabled') in (1, '1', True) and self.get('require_test_location') in (1, '1', True):
             validate_workplaces(self.get('company'))

@@ -4,8 +4,6 @@ from frappe.model.document import Document
 
 class MobileAttendanceSettings(Document):
     def validate(self):
-        if self.get('auto_accept_test_offline') in (1, '1', True) and (self.get('enable_offline_test') not in (1, '1', True) or self.get('require_test_photo') not in (1, '1', True)):
-            frappe.throw('Automatic test acceptance requires offline test punches and photo/GPS evidence.')
         from maas_attendance_mobile.faces import limits
         try:
             limits(self)

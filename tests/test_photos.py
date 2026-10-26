@@ -169,10 +169,10 @@ class OfflinePhotoTests(unittest.TestCase):
         self.context.request['location'] = {'latitude': 24.7, 'longitude': 46.7, 'accuracy_m': 5, 'timestamp': (event + timedelta(seconds=15)).isoformat(), 'precise': True, 'is_mocked': False}
         with patch.object(self.photos, 'save_private') as save:
             result = self.context.submit()
-        self.assertEqual(result['status'], 'Pending Review')
+        self.assertEqual(result['status'], 'Approved')
         save.assert_called_once()
         self.assertNotIn('image_base64', self.context.doc.payload_json)
-        self.assertEqual(len(self.context.context.created), 1)
+        self.assertEqual([r['doctype'] for r in self.context.context.created], ['Mobile Attendance Offline Claim', 'Employee Checkin'])
 
 
 if __name__ == '__main__': unittest.main()

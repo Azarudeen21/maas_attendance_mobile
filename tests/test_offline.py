@@ -61,22 +61,22 @@ class OfflineTests(unittest.TestCase):
         self.old = self.doc.as_dict() | {'user': 'employee@example.test'}
         return result
 
+    def submit_pending(self):
+        """Only an ordering conflict leaves an upload for HR; clear it afterwards."""
+        self.context.latest = {'name': 'CHANGED', 'log_type': 'OUT', 'time': datetime.now() - timedelta(days=1)}
+        result = self.submit()
+        self.assertEqual(result['status'], 'Pending Review')
+        self.context.latest = None
+        return result
+
     def reviewer(self):
         self.frappe.session.user = 'hr@example.test'
         self.frappe.get_roles.side_effect = lambda user=None: ['HR Manager'] if user is None else ['Employee']
 
-    def test_automatic_test_requires_explicit_gate_and_photo_policy(self):
-        self.assertFalse(self.service.automatic_enabled(self.context.config))
-        self.context.config['auto_accept_test_offline'] = '1'
-        self.assertFalse(self.service.automatic_enabled(self.context.config))
-        self.context.config['require_test_photo'] = '1'
-        self.assertTrue(self.service.automatic_enabled(self.context.config))
-
-    def test_valid_test_punch_auto_accepts_without_hr_and_exact_retry_is_idempotent(self):
-        from unittest.mock import patch
-        with patch.object(self.service, 'automatic_enabled', return_value=True):
-            result = self.submit()
+    def test_valid_upload_becomes_checkin_without_hr_and_exact_retry_is_idempotent(self):
+        result = self.submit()  # No acceptance flag or photo needed.
         self.assertEqual(result['status'], 'Approved')
+        self.assertEqual(result['checkin'], 'CHECKIN-TEST')
         self.assertTrue(result['automatically_accepted'])
         self.assertTrue(result['skip_auto_attendance'])
         self.assertEqual(self.context.created[-1]['skip_auto_attendance'], 1)
@@ -84,10 +84,8 @@ class OfflineTests(unittest.TestCase):
         self.assertEqual(len(self.context.created), 2)
 
     def test_automatic_test_conflict_retains_evidence_without_inserting_checkin(self):
-        from unittest.mock import patch
         self.context.latest = {'name': 'CHANGED', 'log_type': 'OUT', 'time': datetime.now()}
-        with patch.object(self.service, 'automatic_enabled', return_value=True):
-            result = self.submit()
+        result = self.submit()
         self.assertEqual(result['status'], 'Pending Review')
         self.assertFalse(result['automatically_accepted'])
         self.assertIsNone(result['checkin'])
@@ -99,11 +97,10 @@ class OfflineTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.service.check_window(now - timedelta(days=8), now)
 
-    def test_upload_creates_only_immutable_pending_claim_without_secret(self):
+    def test_upload_creates_claim_and_checkin_without_secret_or_commit(self):
         result = self.submit()
-        self.assertEqual(result['status'], 'Pending Review')
-        self.assertIsNone(result['checkin'])
-        self.assertEqual([r['doctype'] for r in self.context.created], [self.service.CLAIM])
+        self.assertEqual(result['status'], 'Approved')
+        self.assertEqual([r['doctype'] for r in self.context.created], [self.service.CLAIM, 'Employee Checkin'])
         self.assertNotIn('device_secret', self.doc.payload_json)
         self.frappe.db.commit.assert_not_called()
         self.assertIsNone(self.frappe.flags.get('maas_offline_write'))
@@ -111,7 +108,7 @@ class OfflineTests(unittest.TestCase):
     def test_exact_retry_recovers_and_payload_change_rejected(self):
         self.submit()
         self.assertTrue(self.submit()['duplicate'])
-        self.assertEqual(len(self.context.created), 1)
+        self.assertEqual(len(self.context.created), 2)
         self.request['log_type'] = 'OUT'
         with self.assertRaisesRegex(ValueError, 'different claim'): self.submit()
 
@@ -137,14 +134,14 @@ class OfflineTests(unittest.TestCase):
         self.assertEqual(self.frappe.db.get_value.call_args.args[1], {'name': REQUEST, 'employee': self.context.employee['name'], 'user': 'employee@example.test'})
 
     def test_review_requires_hr_and_separate_reviewer(self):
-        self.submit()
+        self.submit_pending()
         with self.assertRaises(test_api.FakePermissionError): self.service.review(REQUEST, 'Approved', 'Confirmed test')
         self.frappe.get_roles.return_value = ['HR Manager']
         with self.assertRaisesRegex(test_api.FakePermissionError, 'different HR'): self.service.review(REQUEST, 'Approved', 'Confirmed test')
         self.assertEqual(len(self.context.created), 1)
 
     def test_hr_approval_is_atomic_and_final_retry_has_no_duplicate_checkin(self):
-        self.submit(); self.reviewer()
+        self.submit_pending(); self.reviewer()
         response = self.service.review(REQUEST, 'Approved', 'Confirmed test evidence')
         self.assertEqual(response['status'], 'Approved')
         self.assertEqual(response['checkin'], 'CHECKIN-TEST')
@@ -156,7 +153,7 @@ class OfflineTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'already final'): self.service.review(REQUEST, 'Rejected', 'Reject now')
 
     def test_newer_online_checkin_causes_conflict_without_insert(self):
-        self.submit(); self.reviewer()
+        self.submit_pending(); self.reviewer()
         self.context.latest = {'name': 'NEWER', 'log_type': 'OUT', 'time': datetime.now()}
         with self.assertRaisesRegex(ValueError, 'Attendance changed'): self.service.review(REQUEST, 'Approved', 'Confirmed test')
         self.assertEqual(self.doc.status, 'Pending Review')

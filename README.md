@@ -1,6 +1,6 @@
 # MAAS Attendance Mobile — Frappe app
 
-Version 0.18.0 lets Without Photo employees use normal HRMS check-in; 0.17.0 added per-employee checkboxes.
+Version 0.19.0 turns every valid offline upload into an Employee Checkin automatically; 0.18 added normal HRMS check-in for Without Photo employees.
 Version 0.10.0 adds customer-site mobile onboarding with public PKCE setup.
 Version 0.8.0 added an HR control screen and stronger settings validation.
 Version 0.7.0 added private punch photos with GPS and the original button time,
@@ -43,6 +43,15 @@ sessions both use the server session identity. Paths below are prefixed by
 - POST review_offline_claim: HR Manager/System Manager approves or rejects with a reason.
 - GET hr_overview: permission-scoped counts and policy for HR/System Managers.
 - GET mobile_setup: opt-in guest-readable public client ID/label only.
+
+## Offline sync creates check-ins (v0.19.0)
+
+A valid offline upload now always creates the Employee Checkin at its original
+capture time during sync; there is no acceptance switch and no HR step. The
+"Automatically accept" settings were removed (database columns are kept). The
+offline record is kept only as evidence and duplicate protection. If attendance
+changed after capture (an ordering conflict), the upload is not turned into a
+check-in and waits for HR review, as before.
 
 ## Employee check-in checkboxes (v0.17.0)
 

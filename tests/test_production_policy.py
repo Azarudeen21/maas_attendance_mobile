@@ -39,11 +39,7 @@ class ProductionTests(unittest.TestCase):
         self.assertFalse(status['online_test_submission_enabled'])
         self.assertEqual(status['attendance_mode'], 'production')
 
-    def test_auto_accept_requires_explicit_company_flag_and_both_evidence_checks(self):
-        self.assertFalse(self.base.service.status(self.base.employee)['offline_auto_accept_enabled'])
-        self.policy['production_auto_accept_offline'] = 1
-        self.assertFalse(self.base.service.status(self.base.employee)['offline_auto_accept_enabled'])
-        self.policy.update(production_require_photo=1, production_require_location=1)
+    def test_offline_sync_creates_checkins_whenever_production_offline_is_enabled(self):
         self.assertTrue(self.base.service.status(self.base.employee)['offline_auto_accept_enabled'])
         self.config['enable_production_offline'] = 0
         self.assertFalse(self.base.service.status(self.base.employee)['offline_auto_accept_enabled'])
@@ -102,7 +98,7 @@ class ProductionOfflineTests(unittest.TestCase):
     def tearDown(self): self.base.tearDown()
 
     def test_upload_and_approval_preserve_production_original_event(self):
-        reply = self.base.submit()
+        reply = self.base.submit_pending()
         self.assertFalse(reply['test_mode']); self.assertFalse(reply['skip_auto_attendance'])
         self.assertEqual(reply['status'], 'Pending Review')
         self.base.reviewer()
@@ -114,14 +110,14 @@ class ProductionOfflineTests(unittest.TestCase):
         self.assertEqual(checkin['time'], self.base.doc.event_time)
 
     def test_policy_mode_change_cannot_convert_existing_claim(self):
-        self.base.submit(); self.base.reviewer()
+        self.base.submit_pending(); self.base.reviewer()
         self.base.context.config['production_mode'] = False
         with self.assertRaisesRegex(ValueError, 'mode changed'):
             self.base.service.review(self.base.request['request_id'], 'Approved', 'Evidence confirmed by HR')
         self.assertEqual(len(self.base.context.created), 1)
 
     def test_employee_transfer_blocks_approval_but_allows_rejection(self):
-        self.base.submit(); self.base.reviewer()
+        self.base.submit_pending(); self.base.reviewer()
         self.base.context.employee['company'] = 'New Company'
         with self.assertRaisesRegex(ValueError, 'company changed'):
             self.base.service.review(self.base.request['request_id'], 'Approved', 'Evidence confirmed by HR')
@@ -129,7 +125,6 @@ class ProductionOfflineTests(unittest.TestCase):
         self.assertEqual(result['status'], 'Rejected')
 
     def test_auto_accept_creates_original_production_checkin_and_exact_retry(self):
-        self.base.context.config['auto_accept_offline'] = True
         response = self.base.submit()
         self.assertEqual(response['status'], 'Approved')
         self.assertTrue(response['automatically_accepted'])
@@ -144,7 +139,6 @@ class ProductionOfflineTests(unittest.TestCase):
         self.assertIsNone(self.base.frappe.flags.get('maas_test_punch'))
 
     def test_auto_accept_conflict_keeps_evidence_pending_without_checkin(self):
-        self.base.context.config['auto_accept_offline'] = True
         self.base.context.latest = {'name': 'NEWER', 'log_type': 'OUT', 'time': datetime.now()}
         response = self.base.submit()
         self.assertEqual(response['status'], 'Pending Review')
@@ -153,7 +147,6 @@ class ProductionOfflineTests(unittest.TestCase):
         self.assertEqual(len(self.base.context.created), 1)
 
     def test_auto_accept_predecessor_requires_same_device_and_mode(self):
-        self.base.context.config['auto_accept_offline'] = True
         self.base.request['previous_request_id'] = 'ea1ffca1-c4b3-483e-b82e-911f46aa9be7'
         self.base.prior = dict(name=self.base.request['previous_request_id'],
             employee=self.base.context.employee['name'], user='employee@example.test',
@@ -163,7 +156,6 @@ class ProductionOfflineTests(unittest.TestCase):
         self.assertIn('preceding', response['sync_note'])
 
     def test_automatic_out_accepts_approved_same_device_production_predecessor(self):
-        self.base.context.config['auto_accept_offline'] = True
         previous = 'ea1ffca1-c4b3-483e-b82e-911f46aa9be7'
         self.base.request.update(previous_request_id=previous, log_type='OUT')
         self.base.prior = dict(name=previous, employee=self.base.context.employee['name'],
@@ -177,7 +169,6 @@ class ProductionOfflineTests(unittest.TestCase):
         self.assertEqual(self.base.context.created[-1]['log_type'], 'OUT')
 
     def test_automatic_chain_cannot_reference_a_test_mode_claim(self):
-        self.base.context.config['auto_accept_offline'] = True
         previous = 'ea1ffca1-c4b3-483e-b82e-911f46aa9be7'
         self.base.request['previous_request_id'] = previous
         self.base.prior = dict(name=previous, employee=self.base.context.employee['name'],
@@ -187,7 +178,6 @@ class ProductionOfflineTests(unittest.TestCase):
         self.assertEqual(len(self.base.context.created), 1)
 
     def test_auto_accept_persistence_failure_is_not_reported_as_pending(self):
-        self.base.context.config['auto_accept_offline'] = True
         original = self.base.get_doc
         def failed_checkin(value, name=None):
             if isinstance(value, dict) and value['doctype'] == 'Employee Checkin':
@@ -197,11 +187,11 @@ class ProductionOfflineTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, 'database unavailable'): self.base.submit()
         self.assertIsNone(self.base.frappe.flags.get('maas_test_punch'))
 
-    def test_test_mode_never_automatically_accepts_even_with_flag(self):
-        self.base.context.config.update(production_mode=False, auto_accept_offline=True)
+    def test_test_mode_offline_sync_creates_test_checkin(self):
+        self.base.context.config.update(production_mode=False)
         self.base.request.pop('attendance_mode')
-        self.assertEqual(self.base.submit()['status'], 'Pending Review')
-        self.assertEqual(len(self.base.context.created), 1)
+        self.assertEqual(self.base.submit()['status'], 'Approved')
+        self.assertEqual(self.base.context.created[-1]['skip_auto_attendance'], 1)
 
 
 if __name__ == '__main__': unittest.main()

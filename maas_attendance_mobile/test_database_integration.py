@@ -49,7 +49,6 @@ class TestAttendanceDatabase(unittest.TestCase):
             'company': self.company, 'enabled': 1}).insert()
         settings = frappe.get_single(attendance.SETTINGS)
         settings.update({'enable_test_attendance': 0, 'enable_offline_test': 0,
-            'auto_accept_test_offline': 0,
             'enable_production_attendance': 1, 'enable_production_offline': 1,
             'require_test_photo': 0, 'require_test_location': 0})
         settings.save()
@@ -143,7 +142,6 @@ class TestAttendanceDatabase(unittest.TestCase):
             'radius_m': 100, 'max_accuracy_m': 20}).insert()
         policy = frappe.get_doc('Mobile Attendance Company Policy', self.company)
         policy.production_require_photo = policy.production_require_location = 1
-        policy.production_auto_accept_offline = 1
         policy.save()
         self.generated_photo_ids = set()
         self.addCleanup(self.remove_generated_claim_photos)
@@ -226,7 +224,7 @@ class TestAttendanceDatabase(unittest.TestCase):
         settings = frappe.get_single(attendance.SETTINGS)
         settings.update({'enable_production_attendance': 0,
             'enable_production_offline': 0, 'enable_test_attendance': 1,
-            'enable_offline_test': 1, 'auto_accept_test_offline': 1,
+            'enable_offline_test': 1,
             'require_test_photo': 1, 'require_test_location': 0,
             'use_company_test_policies': 0, 'test_employee': self.employee.name})
         settings.save()

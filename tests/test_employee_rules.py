@@ -44,8 +44,8 @@ class EmployeeRulesTests(unittest.TestCase):
         self.assertEqual(self.effective(ONLINE)['require_test_photo'], '1')  # Neither: site/company decides.
         self.assertEqual(self.effective(ONLINE, require_test_photo='0')['require_test_photo'], '0')
         self.assertEqual(self.effective(ONLINE, WITH, require_test_photo='0')['require_test_photo'], 1)
-        without = self.effective(ONLINE, WITHOUT, auto_accept_offline=True)
-        self.assertEqual((without['require_test_photo'], without['photo_optional'], without['auto_accept_offline']), (0, False, False))
+        without = self.effective(ONLINE, WITHOUT)
+        self.assertEqual((without['require_test_photo'], without['photo_optional']), (0, False))
         both = self.effective(ONLINE, WITH, WITHOUT)
         self.assertEqual((both['require_test_photo'], both['photo_optional']), (0, True))
 

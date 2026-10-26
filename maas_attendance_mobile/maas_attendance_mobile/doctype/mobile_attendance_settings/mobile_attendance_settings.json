@@ -15,7 +15,6 @@
   "require_approved_device",
   "offline_section",
   "enable_offline_test",
-  "auto_accept_test_offline",
   "site_setup_section",
   "enable_mobile_site_setup",
   "mobile_site_label",
@@ -140,13 +139,6 @@
    "description": "Uploaded original evidence awaits HR review. Approval creates a production checkin.",
    "default": "0",
    "fieldtype": "Check"
-  },
-  {
-   "fieldname": "auto_accept_test_offline",
-   "fieldtype": "Check",
-   "label": "Automatically accept valid test offline punches",
-   "default": "0",
-   "description": "Dedicated test employees only. Requires photo/GPS evidence and an approved device. Does not mark daily attendance."
   },
   {
    "fieldname": "face_section",

@@ -15,13 +15,6 @@ def enabled(employee, config):
     return attendance.enabled_for(employee, config) and str(config.get('enable_offline_test', 0)) == '1'
 
 
-def automatic_enabled(config):
-    if config.get('production_mode'):
-        return bool(config.get('auto_accept_offline'))
-    return (str(config.get('auto_accept_test_offline', 0)) == '1'
-            and str(config.get('require_test_photo', 0)) == '1')
-
-
 def parse_claim(request):
     if isinstance(request, str):
         if len(request) > 3 * 1024 * 1024: raise ValueError('Offline request too large.')
@@ -145,28 +138,28 @@ def submit(employee, request, device_secret):
             # from the immutable persisted evidence snapshot.
             doc.reload()
     finally: frappe.flags.maas_offline_write = previous
-    if automatic_enabled(config):
-        # The employee/device/policy locks and evidence validation above remain
-        # in the same POST transaction as this checkin and final claim update.
-        local = site_time(event, get_system_timezone())
-        conflict = sequence_conflict(doc, payload, local)
-        if conflict:
-            doc.sync_note = conflict
-        else:
-            create_checkin(doc, payload, local, production=bool(config.get('production_mode')))
-            from frappe.utils import now_datetime
-            doc.status = 'Approved'
-            doc.automatically_accepted = 1
-            doc.reviewed_at = now_datetime()
-            doc.sync_note = 'Automatically accepted with original capture time and evidence.'
-        previous_auto = frappe.flags.get('maas_offline_auto_accept')
-        previous_write = frappe.flags.get('maas_offline_write')
-        frappe.flags.maas_offline_write = doc.request_id
-        frappe.flags.maas_offline_auto_accept = doc.request_id
-        try: doc.save(ignore_permissions=True)
-        finally:
-            frappe.flags.maas_offline_auto_accept = previous_auto
-            frappe.flags.maas_offline_write = previous_write
+    # Every valid offline punch becomes an Employee Checkin at its original time.
+    # The employee/device/policy locks and evidence validation above remain in
+    # the same POST transaction. Only an ordering conflict is left for HR.
+    local = site_time(event, get_system_timezone())
+    conflict = sequence_conflict(doc, payload, local)
+    if conflict:
+        doc.sync_note = conflict
+    else:
+        create_checkin(doc, payload, local, production=bool(config.get('production_mode')))
+        from frappe.utils import now_datetime
+        doc.status = 'Approved'
+        doc.automatically_accepted = 1
+        doc.reviewed_at = now_datetime()
+        doc.sync_note = 'Synced with original capture time and evidence.'
+    previous_auto = frappe.flags.get('maas_offline_auto_accept')
+    previous_write = frappe.flags.get('maas_offline_write')
+    frappe.flags.maas_offline_write = doc.request_id
+    frappe.flags.maas_offline_auto_accept = doc.request_id
+    try: doc.save(ignore_permissions=True)
+    finally:
+        frappe.flags.maas_offline_auto_accept = previous_auto
+        frappe.flags.maas_offline_write = previous_write
     return reply(doc.as_dict())
 
 

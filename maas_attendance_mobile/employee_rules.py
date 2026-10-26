@@ -30,7 +30,7 @@ def ensure_fields():
         {'fieldname': WITH_PHOTO, 'fieldtype': 'Check', 'label': 'Check in with Photo', 'insert_after': 'maas_checkin_column',
          'description': 'A selfie is required. With "without Photo" also ticked, the photo is optional.'},
         {'fieldname': WITHOUT_PHOTO, 'fieldtype': 'Check', 'label': 'Check in Without Photo', 'insert_after': WITH_PHOTO,
-         'description': 'No photo needed, even if the company requires photos. Offline check-ins then wait for HR review.'},
+         'description': 'No photo needed, even if the company requires photos.'},
     ]}, update=True)
 
 
@@ -56,6 +56,4 @@ def apply(employee, config):
     if ticked[WITH_PHOTO] or ticked[WITHOUT_PHOTO]:
         result['require_test_photo'] = int(ticked[WITH_PHOTO] and not ticked[WITHOUT_PHOTO])
         result['photo_optional'] = ticked[WITH_PHOTO] and ticked[WITHOUT_PHOTO]
-    if str(result.get('require_test_photo', 0)) != '1':
-        result['auto_accept_offline'] = False  # Automatic acceptance needs photo evidence.
     return result

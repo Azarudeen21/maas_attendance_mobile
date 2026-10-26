@@ -29,7 +29,6 @@ frappe.pages['maas-attendance-controls'].on_page_load = function(wrapper) {
         ['require_test_location', 'GPS workplace checks'],
         ['require_approved_device', 'Approved device required for online punches'],
         ['enable_offline_test', 'Offline test claims'],
-        ['auto_accept_test_offline', 'Automatically accept valid test offline punches'],
         ['require_test_photo', 'Punch photo and GPS required'],
         ['enable_production_attendance', 'Production attendance'],
         ['enable_production_offline', 'Production offline claims'],
