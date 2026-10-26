@@ -289,7 +289,7 @@ def run_employee_photo_enrollment(company, user):
     summary = {'company': company, 'employees': len(rows), 'enrolled': 0, 'unchanged': 0, 'failed': []}
     for row in rows:
         try:
-            summary[enroll_employee_photo(row)] += 1
+            summary[enroll_employee_photo(row)[0]] += 1
             frappe.db.commit()
         except Exception as error:
             frappe.db.rollback()
@@ -298,12 +298,32 @@ def run_employee_photo_enrollment(company, user):
     return summary
 
 
+def enroll_employee(employee, consent_confirmed):
+    """Employee form button: enroll that employee's current saved photo."""
+    require_hr()
+    config()
+    if not truthy(consent_confirmed):
+        frappe.throw("Confirm that the employee's consent to face recognition is on file.")
+    row = frappe.db.get_value('Employee', employee, ['name', 'image'], as_dict=True) if employee else None
+    if not row or not frappe.has_permission('Employee', 'read', doc=row['name']):
+        frappe.throw('Select an employee you can access.', frappe.PermissionError)
+    if not row.get('image'):
+        frappe.throw('Add and save a photo for this employee first.')
+    try:
+        outcome, name = enroll_employee_photo(row)
+    except FaceError as error:
+        frappe.throw(str(error))
+    return {'api_version': 1, 'outcome': outcome, 'enrollment': name}
+
+
 def enroll_employee_photo(row):
-    """Copy the current Employee photo privately; it replaces older Employee Photo samples."""
+    """Copy the current Employee photo privately; it replaces older Employee Photo samples.
+    Returns (outcome, enrollment name)."""
     raw = _readable_file(row['image'])
     digest = hashlib.sha256(raw).hexdigest()
-    if frappe.db.exists(ENROLLMENT, {'employee': row['name'], 'image_sha256': digest, 'enabled': 1}):
-        return 'unchanged'
+    existing = frappe.db.get_value(ENROLLMENT, {'employee': row['name'], 'image_sha256': digest, 'enabled': 1}, 'name')
+    if existing:
+        return 'unchanged', existing
     analyse(load_image(raw), enrollment=True)  # Fail before storing an unusable copy.
     for name in frappe.get_all(ENROLLMENT, filters={'employee': row['name'], 'source': 'Employee Photo', 'enabled': 1}, pluck='name'):
         old = frappe.get_doc(ENROLLMENT, name)
@@ -322,4 +342,4 @@ def enroll_employee_photo(row):
     if not frappe.db.get_value('File', copy.name, 'attached_to_name'):
         frappe.db.set_value('File', copy.name, {'attached_to_doctype': ENROLLMENT,
             'attached_to_name': doc.name, 'attached_to_field': 'photo'})
-    return 'enrolled'
+    return 'enrolled', doc.name

@@ -239,6 +239,45 @@ class FaceEnrollmentControllerTests(FaceTestCase):
         with self.assertRaises(test_api.FakePermissionError): self.doc.on_trash()
 
 
+class EmployeeButtonTests(FaceTestCase):
+    def setUp(self):
+        super().setUp()
+        self.frappe.get_roles.return_value = ['HR Manager']
+        self.frappe.has_permission = Mock(return_value=True)
+        self.row = {'name': 'EMP-A', 'image': '/files/a.jpg'}
+        self.frappe.db.get_value = Mock(side_effect=lambda doctype, name, fields, **kw: self.row)
+        self.enroll = patch.object(self.faces, 'enroll_employee_photo', Mock(return_value=('enrolled', 'MAFE-00007')))
+        self.enroll.start()
+
+    def tearDown(self):
+        self.enroll.stop()
+        super().tearDown()
+
+    def test_enrolls_saved_employee_photo_and_reports_outcome(self):
+        self.assertEqual(self.faces.enroll_employee('EMP-A', 1),
+                         {'api_version': 1, 'outcome': 'enrolled', 'enrollment': 'MAFE-00007'})
+        self.faces.enroll_employee_photo.assert_called_once_with(self.row)
+
+    def test_requires_photo_consent_access_hr_role_and_pilot(self):
+        with self.assertRaisesRegex(ValueError, 'consent'): self.faces.enroll_employee('EMP-A', 0)
+        self.row = {'name': 'EMP-A', 'image': None}
+        with self.assertRaisesRegex(ValueError, 'photo'): self.faces.enroll_employee('EMP-A', 1)
+        self.row = {'name': 'EMP-A', 'image': '/files/a.jpg'}
+        self.frappe.has_permission.return_value = False
+        with self.assertRaises(test_api.FakePermissionError): self.faces.enroll_employee('EMP-A', 1)
+        self.frappe.has_permission.return_value = True
+        self.frappe.get_roles.return_value = ['Employee']
+        with self.assertRaises(test_api.FakePermissionError): self.faces.enroll_employee('EMP-A', 1)
+        self.frappe.get_roles.return_value = ['HR Manager']
+        self.site['enable_face_recognition'] = 0
+        with self.assertRaises(test_api.FakePermissionError): self.faces.enroll_employee('EMP-A', 1)
+        self.faces.enroll_employee_photo.assert_not_called()
+
+    def test_unusable_photo_shows_the_reason(self):
+        self.faces.enroll_employee_photo.side_effect = self.faces.FaceError('no_face', 'No clear face was found.')
+        with self.assertRaisesRegex(ValueError, 'No clear face'): self.faces.enroll_employee('EMP-A', 1)
+
+
 def opencv_available():
     try:
         import cv2, numpy  # noqa: F401

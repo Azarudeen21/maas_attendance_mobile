@@ -16,6 +16,7 @@ scheduler_events = {
 }
 
 doctype_js = {
+    "Employee": "public/js/employee_face.js",
     "Mobile Attendance Transaction": "public/js/photo_retention.js",
     "Mobile Attendance Offline Claim": "public/js/photo_retention.js",
 }

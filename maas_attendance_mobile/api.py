@@ -190,3 +190,9 @@ def supervisor_punch(employee, request_id, log_type, timestamp, device_id, app_v
     """The server identifies the face again; employee is only the supervisor's confirmation."""
     from maas_attendance_mobile.supervisor import punch
     return punch(_linked_employee(), employee, request_id, log_type, timestamp, device_id, app_version, location, device_secret, photo)
+
+
+@frappe.whitelist(methods=['POST'])
+def face_enroll_employee(employee, consent_confirmed):
+    from maas_attendance_mobile.faces import enroll_employee
+    return enroll_employee(employee, consent_confirmed)

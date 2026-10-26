@@ -122,6 +122,10 @@ Exactly one clear face (at least 64 px) is required. HR must confirm consent is
 on file. Disable a photo to stop matching it, or delete the record to erase the
 embedding and private photo. Only HR Manager/System Manager can use it.
 
+On an Employee with a saved photo, HR can use Face Recognition → Create Face
+Enrollment (same rules as the bulk enrollment below; an already enrolled photo
+is reported, not duplicated).
+
 From the enrollment list HR can:
 
 - Enroll from Employee photos: background job for one company's active employees
