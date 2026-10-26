@@ -75,15 +75,15 @@ def capabilities():
     candidates = required + [
         "device_id", "skip_auto_attendance", "latitude", "longitude", "geolocation"
     ]
-    from maas_attendance_mobile.attendance import enabled_for, settings
+    from maas_attendance_mobile.attendance import enabled_for, online_enabled, settings
     config = settings(employee['name'])
     return {
         "api_version": 1,
         "app_version": __version__,
         "versions": versions,
         "employee_checkin_fields": [field for field in candidates if meta.has_field(field)],
-        "attendance_submission_enabled": bool(config.get('production_mode')) and enabled_for(employee['name'], config),
-        "online_test_submission_enabled": not config.get('production_mode', False) and enabled_for(employee['name'], config),
+        "attendance_submission_enabled": bool(config.get('production_mode')) and online_enabled(employee['name'], config),
+        "online_test_submission_enabled": not config.get('production_mode', False) and online_enabled(employee['name'], config),
         "test_mode": not bool(config.get('production_mode')),
         "offline_submission_enabled": bool(config.get('production_mode')) and enabled_for(employee['name'], config) and config.get('enable_offline_test') in (1, '1', True),
         "offline_test_claims_supported": True,

@@ -1,6 +1,6 @@
 # MAAS Attendance Mobile — Frappe app
 
-Version 0.16.0 adds supervisor face check-in on top of the 0.15.0 face recognition pilot.
+Version 0.17.0 adds per-employee check-in checkboxes; 0.16.0 added supervisor face check-in.
 Version 0.10.0 adds customer-site mobile onboarding with public PKCE setup.
 Version 0.8.0 added an HR control screen and stronger settings validation.
 Version 0.7.0 added private punch photos with GPS and the original button time,
@@ -43,6 +43,24 @@ sessions both use the server session identity. Paths below are prefixed by
 - POST review_offline_claim: HR Manager/System Manager approves or rejects with a reason.
 - GET hr_overview: permission-scoped counts and policy for HR/System Managers.
 - GET mobile_setup: opt-in guest-readable public client ID/label only.
+
+## Employee check-in checkboxes (v0.17.0)
+
+Employee → Mobile Check-in section (created on migrate, after Attendance Device
+ID): Online Check in, Offline Check In, Check in with Photo, Check in Without
+Photo. Applied on the server for every route (online punch, offline claim, HR
+review, automatic acceptance, supervisor scan, status).
+
+- Online/Offline: only ticked channels are allowed; none ticked blocks app
+  attendance. Site/company gates still apply: a box never re-enables a switched
+  off gate. Both ticked: the app punches online when connected and saves an
+  offline punch only when there is no connection.
+- Photo: with-only requires a photo; without-only needs none, even when the
+  site/company requires photos (offline punches then wait for HR review because
+  automatic acceptance needs photo evidence); both makes it optional (the app
+  asks); neither follows the site/company setting.
+
+Upgrading blocks every employee until HR ticks their channel boxes.
 
 ## Supervisor face check-in (v0.16.0)
 

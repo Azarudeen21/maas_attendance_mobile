@@ -55,8 +55,16 @@ class ApiTests(unittest.TestCase):
         importlib.reload(maas_attendance_mobile.company_policy)
         import maas_attendance_mobile.production_policy
         importlib.reload(maas_attendance_mobile.production_policy)
+        # Existing scenarios run as an employee with Online and Offline ticked and
+        # no photo boxes (pre-checkbox behaviour); test_employee_rules covers the boxes.
+        import maas_attendance_mobile.employee_rules as rules
+        rules = importlib.reload(rules)
+        self.rules_apply = rules.apply
+        rules.apply = lambda employee, config: dict(config, online_allowed=True, photo_optional=False)
 
     def tearDown(self):
+        import maas_attendance_mobile.employee_rules as rules
+        rules.apply = self.rules_apply
         for name, module in self.previous.items():
             if module is None:
                 sys.modules.pop(name, None)

@@ -19,11 +19,17 @@ def settings(employee=None):
     if employee is None:
         return site
     from maas_attendance_mobile.company_policy import effective
-    return effective(employee, site)
+    from maas_attendance_mobile import employee_rules
+    return employee_rules.apply(employee, effective(employee, site))
 
 
 def enabled_for(employee, config):
     return str(config.get("enable_test_attendance", 0)) == "1" and config.get("test_employee") == employee
+
+
+def online_enabled(employee, config):
+    """Policy eligibility plus the employee's Online Check in box."""
+    return enabled_for(employee, config) and bool(config.get("online_allowed"))
 
 
 def require_enabled(employee, config):
@@ -46,8 +52,8 @@ def status(employee):
     return {
         "api_version": 1, "test_mode": not bool(config.get('production_mode')),
         "attendance_mode": 'production' if config.get('production_mode') else 'test',
-        "online_submission_enabled": enabled_for(employee["name"], config),
-        "online_test_submission_enabled": enabled_for(employee["name"], config) and not config.get('production_mode', False),
+        "online_submission_enabled": online_enabled(employee["name"], config),
+        "online_test_submission_enabled": online_enabled(employee["name"], config) and not config.get('production_mode', False),
         "last_checkin": dict(latest) if latest else None,
         "next_log_type": "OUT" if latest and latest["log_type"] == "IN" else
                          "IN" if not latest or latest["log_type"] == "OUT" else None,
@@ -58,6 +64,7 @@ def status(employee):
         "offline_submission_enabled": enabled(employee['name'], config),
         "offline_auto_accept_enabled": enabled(employee['name'], config) and automatic_enabled(config),
         "photo_required": str(config.get('require_test_photo', 0)) == '1',
+        "photo_optional": bool(config.get('photo_optional')),
         "supervisor_checkin_enabled": supervisor_available(),
     }
 
@@ -100,6 +107,8 @@ def submit(employee, request_id, log_type, timestamp, device_id, app_version, lo
         frappe.throw("This login is not eligible for attendance.", frappe.PermissionError)
     config = settings(employee["name"])
     require_enabled(employee["name"], config)
+    if not config.get("online_allowed"):
+        frappe.throw("Online check-in is not enabled for you. Use offline attendance or contact HR.", frappe.PermissionError)
     from maas_attendance_mobile.production_policy import require_mode
     require_mode(config, attendance_mode)
     production = bool(config.get('production_mode'))

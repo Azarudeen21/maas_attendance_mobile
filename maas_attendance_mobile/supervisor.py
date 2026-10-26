@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 
 import frappe
 
-from maas_attendance_mobile.attendance import RECEIPT, _reply, enabled_for, latest_checkin, settings
+from maas_attendance_mobile.attendance import RECEIPT, _reply, latest_checkin, online_enabled, settings
 from maas_attendance_mobile.faces import SETTINGS, FaceError, analyse, decide, limits, load_image, rank, truthy
 from maas_attendance_mobile.punch_rules import check_fresh, check_transition, parse_request, request_hash, site_time
 
@@ -79,10 +79,10 @@ def identify(supervisor, photo, device_id, device_secret):
     result = _identify(supervisor, content)
     if result['decision'] == 'match':
         config = settings(result['employee'])
-        result['attendance_enabled'] = enabled_for(result['employee'], config)
+        result['attendance_enabled'] = online_enabled(result['employee'], config)
         result['next_log_type'] = _next_log_type(result['employee'])
         if not result['attendance_enabled']:
-            result['message'] = 'Mobile attendance is not enabled for this employee. Contact HR.'
+            result['message'] = 'Online check-in is not enabled for this employee. Contact HR.'
     return dict(result, api_version=1)
 
 
@@ -122,8 +122,8 @@ def punch(supervisor, employee, request_id, log_type, timestamp, device_id, app_
     if not current or current['status'] != 'Active' or current['company'] != supervisor['company']:
         frappe.throw('Only active employees in your company can be checked in.', frappe.PermissionError)
     config = settings(employee)
-    if not enabled_for(employee, config):
-        frappe.throw('Mobile attendance is not enabled for this employee. Contact HR.', frappe.PermissionError)
+    if not online_enabled(employee, config):
+        frappe.throw('Online check-in is not enabled for this employee. Contact HR.', frappe.PermissionError)
     production = bool(config.get('production_mode'))
     if production:
         payload['attendance_mode'] = 'production'
