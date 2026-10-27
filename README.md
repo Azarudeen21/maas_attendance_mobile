@@ -44,9 +44,6 @@ Every switch starts off. Then:
 1. **Mobile Attendance Settings**
    - General → *Enable Mobile Attendance* (master switch).
    - Offline Sync → *Enable Offline Sync* if employees may check in offline.
-   - Mobile Site Connection → enable it and select a public OAuth Client
-     (Authorization Code, Code response, Token Endpoint Auth Method None,
-     scope `all`, redirect URI `com.maasconsult.attendance:/oauth2redirect`).
    - Face Recognition → enable, adjust threshold (default 0.363) and margin
      (default 0.05). Supervisor Check-in → enable supervisor face check-in.
 2. **Mobile Attendance Company Policy** (one per company): *Enable Mobile
@@ -117,7 +114,7 @@ Open the **Mobile Attendance** workspace.
 
 | DocType | Purpose |
 |---|---|
-| Mobile Attendance Settings | Site switches, site connection, face recognition |
+| Mobile Attendance Settings | Site switches, face recognition, supervisor check-in |
 | Mobile Attendance Company Policy | Per-company rules and photo retention |
 | Mobile Attendance Transaction | Immutable receipt per online or supervisor punch |
 | Mobile Attendance Offline Claim | Evidence and result of each offline upload |
@@ -133,7 +130,6 @@ The server always derives the employee from the login.
 
 | Method | Caller | Purpose |
 |---|---|---|
-| `mobile_setup` (GET, guest) | App | Public OAuth client and site label |
 | `profile`, `attendance_status` (GET) | App | Own employee and current rules |
 | `punch` (POST) | App | Online check-in/out |
 | `register_device`, `device_status` (POST) | App | Phone registration |

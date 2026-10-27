@@ -8,10 +8,6 @@
   "enable_mobile_attendance",
   "offline_section",
   "enable_offline_sync",
-  "site_setup_section",
-  "enable_mobile_site_setup",
-  "mobile_site_label",
-  "mobile_oauth_client",
   "face_section",
   "enable_face_recognition",
   "face_match_threshold",
@@ -43,34 +39,6 @@
    "label": "Enable Offline Sync",
    "default": "0",
    "description": "Employees with Offline Check In save punches on the phone and upload them later; each becomes an Employee Checkin at its original time. The company policy must also allow offline. Only ordering conflicts wait for HR review."
-  },
-  {
-   "fieldname": "site_setup_section",
-   "fieldtype": "Section Break",
-   "label": "Mobile Site Connection"
-  },
-  {
-   "fieldname": "enable_mobile_site_setup",
-   "fieldtype": "Check",
-   "label": "Enable Mobile Site Connection",
-   "default": "0",
-   "description": "Lets the app connect to this site by its address. Publishes only the public OAuth client ID and site name; it does not enable attendance."
-  },
-  {
-   "fieldname": "mobile_site_label",
-   "fieldtype": "Data",
-   "label": "Site Display Name",
-   "depends_on": "eval:doc.enable_mobile_site_setup",
-   "mandatory_depends_on": "eval:doc.enable_mobile_site_setup"
-  },
-  {
-   "fieldname": "mobile_oauth_client",
-   "fieldtype": "Link",
-   "options": "OAuth Client",
-   "label": "Mobile Public OAuth Client",
-   "description": "OAuth Client with Authorization Code grant, Code response, Token Endpoint Auth Method None, scope all and redirect URI com.maasconsult.attendance:/oauth2redirect.",
-   "depends_on": "eval:doc.enable_mobile_site_setup",
-   "mandatory_depends_on": "eval:doc.enable_mobile_site_setup"
   },
   {
    "fieldname": "face_section",

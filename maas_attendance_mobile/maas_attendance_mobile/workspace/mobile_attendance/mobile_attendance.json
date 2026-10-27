@@ -177,7 +177,7 @@
   {
    "type": "Card Break",
    "label": "Setup",
-   "link_count": 4,
+   "link_count": 3,
    "hidden": 0,
    "is_query_report": 0,
    "onboard": 0
@@ -219,18 +219,6 @@
    "only_for": ""
   },
   {
-   "type": "Link",
-   "label": "OAuth Client",
-   "link_type": "DocType",
-   "link_to": "OAuth Client",
-   "link_count": 0,
-   "hidden": 0,
-   "is_query_report": 0,
-   "onboard": 0,
-   "dependencies": "",
-   "only_for": ""
-  },
-  {
    "type": "Card Break",
    "label": "Audit",
    "link_count": 1,
@@ -255,7 +243,7 @@
  "quick_lists": [],
  "custom_blocks": [],
  "creation": "2026-10-26 12:00:00.000000",
- "modified": "2026-10-26 12:00:00.000000",
+ "modified": "2026-10-27 16:00:00.000000",
  "modified_by": "Administrator",
  "owner": "Administrator",
  "docstatus": 0,

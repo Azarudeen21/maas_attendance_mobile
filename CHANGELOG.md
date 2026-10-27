@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.20.5
+- Removed the unused Mobile Site Connection settings (OAuth client, site label)
+  and the guest `mobile_setup` call; the app signs in through the HRMS login
+  page. Old values stay in the database and are ignored.
+
 ## 0.20.4
 - An offline punch whose photo does not match the employee is kept for HR
   review ("Face check failed: …") with its photo and original time, instead
