@@ -197,6 +197,8 @@ def _finish(name):
         stamp = _now()
         frappe.db.set_value(job.source_doctype, job.source_name,
             {PHOTO_FIELD: None, 'photo_removed_at': stamp, 'photo_cleanup': name}, update_modified=False)
+        frappe.db.set_value('Employee Checkin', {'maas_punch_photo': job.photo_url}, 'maas_punch_photo', None,
+            update_modified=False)
         frappe.db.set_value(JOB, name, {'status': 'Completed', 'completed_at': stamp}, update_modified=False)
     finally:
         frappe.flags.maas_photo_delete = previous

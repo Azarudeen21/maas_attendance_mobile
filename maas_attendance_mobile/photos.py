@@ -85,6 +85,12 @@ def save_private(doctype, name, content):
         frappe.flags.maas_photo_write = previous
 
 
+def link_checkin(checkin, url):
+    """Show the punch photo on its Employee Checkin (same private file)."""
+    frappe.db.set_value('Employee Checkin', checkin, {'maas_with_photo': 1, 'maas_punch_photo': url},
+        update_modified=False)
+
+
 def guard_file(doc, method=None):
     old = doc.get_doc_before_save()
     references = [(doc.get('attached_to_doctype'), doc.get('attached_to_name'))]

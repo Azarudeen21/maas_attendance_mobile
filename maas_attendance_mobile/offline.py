@@ -43,6 +43,10 @@ def parse_claim(request):
     return payload, event, photo_bytes
 
 
+# Prefix of the review note for an offline photo that did not match the employee.
+FACE_NOTE = 'Face check failed: '
+
+
 def check_window(event, now):
     if event < now - timedelta(days=7) or event > now + timedelta(minutes=2):
         raise ValueError('Offline uploads must be within seven days. Ask HR to correct older events manually.')
@@ -110,6 +114,12 @@ def submit(employee, request, device_secret):
             check_timing(event, captured, location, sampled, datetime.now(timezone.utc), offline=True)
         except ValueError as error: frappe.throw(str(error), frappe.ValidationError)
     gps_check(payload, event, current['company'], rules)
+    face = None
+    if photo_bytes:
+        # A photo that is not this employee's face is kept for HR with its
+        # original time: HR approves (it was them) or rejects it as evidence.
+        from maas_attendance_mobile.faces import own_face_problem
+        face = own_face_problem(employee['name'], current['company'], photo_bytes)
     # Bound each employee's review backlog; exact retries do not consume slots.
     if len(frappe.get_all(CLAIM, filters={'employee': employee['name'], 'status': 'Pending Review'}, fields=['name'], limit_page_length=100)) >= 100:
         frappe.throw('Offline review backlog is full. Contact HR.', frappe.ValidationError)
@@ -133,8 +143,9 @@ def submit(employee, request, device_secret):
     finally: frappe.flags.maas_offline_write = previous
     # Every valid offline punch becomes an Employee Checkin at its original time.
     # The employee/device/policy locks and evidence validation above remain in
-    # the same POST transaction. Only an ordering conflict is left for HR.
-    conflict = sequence_conflict(doc, payload, local)
+    # the same POST transaction. Only an ordering conflict or a face that did
+    # not match is left for HR.
+    conflict = (face and FACE_NOTE + face) or sequence_conflict(doc, payload, local)
     if conflict:
         doc.sync_note = conflict
     else:
@@ -181,6 +192,7 @@ def create_checkin(doc, payload, local):
         checkin = frappe.get_doc({'doctype': 'Employee Checkin', 'employee': doc.employee,
             'log_type': payload['log_type'], 'time': local,
             'device_id': 'MAAS-OFFLINE:' + payload['device_id'], 'skip_auto_attendance': 0,
+            'maas_with_photo': 1 if doc.get('punch_photo') else 0, 'maas_punch_photo': doc.get('punch_photo'),
             **({'latitude': payload['location']['latitude'], 'longitude': payload['location']['longitude']}
                if payload.get('location') else {})}).insert(ignore_permissions=True)
         doc.checkin = checkin.name

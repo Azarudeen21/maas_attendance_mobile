@@ -47,9 +47,11 @@ def resolve(employee):
     company = company or {}
     ticked = _ticked(row)
     active = on(config.get('enable_mobile_attendance')) and bool(company)
+    sync = active and on(config.get('enable_offline_sync')) and on(company.get('allow_offline'))
     rules = {
         'online': active and ticked[ONLINE],
-        'offline': active and ticked[OFFLINE] and on(config.get('enable_offline_sync')) and on(company.get('allow_offline')),
+        'offline': sync and ticked[OFFLINE],
+        'offline_sync': sync,  # Site and company allow offline uploads (any employee).
         'require_photo': on(company.get('require_photo')),
         'photo_optional': False,
         'require_location': on(company.get('require_location')),
@@ -64,20 +66,28 @@ def resolve(employee):
 
 def own_employee(user):
     """The single Employee linked to a login, with its check-in boxes."""
-    rows = frappe.get_all('Employee', filters={'user_id': user}, fields=['name', *FIELDS], limit_page_length=2)
+    rows = frappe.get_all('Employee', filters={'user_id': user}, fields=['name', 'company', *FIELDS], limit_page_length=2)
     return rows[0] if len(rows) == 1 else None
 
 
 def uses_app(user, employee):
-    """True when this login's own Employee is set up for app check-in."""
+    """True when this login's own Employee is governed by mobile attendance:
+    a check-in box is ticked, or mobile attendance is on for their company."""
     row = own_employee(user)
-    return bool(row and row['name'] == employee and (on(row.get(ONLINE)) or on(row.get(OFFLINE))))
+    if not row or row['name'] != employee:
+        return False
+    if on(row.get(ONLINE)) or on(row.get(OFFLINE)):
+        return True
+    return on(site().get('enable_mobile_attendance')) and bool(
+        frappe.db.exists(POLICY, {'company': row.get('company'), 'enabled': 1}))
 
 
 def allows_standard_checkin(employee, user):
-    """Normal HRMS Employee Checkin insert, only for the employee's own login."""
+    """Normal HRMS Employee Checkin insert, only for the employee's own login
+    and only while their online check-in is actually enabled."""
     row = frappe.db.get_value('Employee', employee, ['user_id', *FIELDS], as_dict=True)
-    return isinstance(row, dict) and row.get('user_id') == user and _standard(_ticked(row))
+    return (isinstance(row, dict) and row.get('user_id') == user and _standard(_ticked(row))
+            and resolve(employee)['online'])
 
 
 def ensure_fields():
@@ -94,6 +104,12 @@ def ensure_fields():
          'description': 'A selfie is required. With "without Photo" also ticked, the photo is optional.'},
         {'fieldname': WITHOUT_PHOTO, 'fieldtype': 'Check', 'label': 'Check in Without Photo', 'insert_after': WITH_PHOTO,
          'description': 'No photo needed, even if the company requires photos. With Online, uses normal HRMS check-in.'},
+    ], 'Employee Checkin': [
+        {'fieldname': 'maas_with_photo', 'fieldtype': 'Check', 'label': 'With Photo', 'insert_after': 'device_id',
+         'read_only': 1, 'in_list_view': 1, 'in_standard_filter': 1,
+         'description': 'Recorded from the mobile app with a photo.'},
+        {'fieldname': 'maas_punch_photo', 'fieldtype': 'Attach Image', 'label': 'Check-in Photo',
+         'insert_after': 'maas_with_photo', 'read_only': 1, 'depends_on': 'eval:doc.maas_punch_photo'},
     ]}, update=True)
 
 

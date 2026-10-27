@@ -69,8 +69,8 @@ def register_device(device_id, device_secret, device_label):
 
 @frappe.whitelist(methods=["POST"])
 def device_status(device_id, device_secret):
-    from maas_attendance_mobile.devices import record, reply
-    return reply(record(_linked_employee(), device_id, device_secret))
+    from maas_attendance_mobile.devices import status
+    return status(_linked_employee(), device_id, device_secret)
 
 
 @frappe.whitelist(methods=["GET"])
@@ -133,6 +133,13 @@ def supervisor_punch(employee, request_id, log_type, timestamp, device_id, app_v
     """The server identifies the face again; employee is only the supervisor's confirmation."""
     from maas_attendance_mobile.supervisor import punch
     return punch(_linked_employee(), employee, request_id, log_type, timestamp, device_id, app_version, location, device_secret, photo)
+
+
+@frappe.whitelist(methods=["POST"])
+def supervisor_offline_punch(request, device_secret):
+    """Upload a scan saved without connection; the server identifies the employee."""
+    from maas_attendance_mobile.supervisor import offline_punch
+    return offline_punch(_linked_employee(), request, device_secret)
 
 
 @frappe.whitelist(methods=['POST'])

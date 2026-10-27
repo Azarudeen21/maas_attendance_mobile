@@ -79,13 +79,22 @@ class PolicyTests(unittest.TestCase):
         user = self.employee['user_id']
         self.assertTrue(self.policy.allows_standard_checkin(self.employee['name'], user))
         self.assertFalse(self.policy.allows_standard_checkin(self.employee['name'], 'someone.else@example.test'))
+        self.company['enabled'] = 0  # Online not actually enabled: no normal HRMS check-in either.
+        self.assertFalse(self.policy.allows_standard_checkin(self.employee['name'], user))
 
     def test_app_user_means_own_employee_with_a_channel_box(self):
         row = {'name': self.employee['name'], ONLINE: 0, OFFLINE: 1}
         self.frappe.get_all = Mock(return_value=[row])
         self.assertTrue(self.policy.uses_app('employee@example.test', self.employee['name']))
         self.assertFalse(self.policy.uses_app('employee@example.test', 'SOMEONE-ELSE'))
-        row[OFFLINE] = 0
+        row[OFFLINE] = 0  # No boxes: governed only while mobile attendance is on for the company.
+        row['company'] = 'Test Company'
+        self.frappe.db.exists = Mock(side_effect=lambda doctype, filters: bool(self.policy_row(filters)))
+        self.assertTrue(self.policy.uses_app('employee@example.test', self.employee['name']))
+        self.company['enabled'] = 0
+        self.assertFalse(self.policy.uses_app('employee@example.test', self.employee['name']))
+        self.company['enabled'] = 1
+        self.site['enable_mobile_attendance'] = 0
         self.assertFalse(self.policy.uses_app('employee@example.test', self.employee['name']))
         self.frappe.get_all = Mock(return_value=[row, dict(row, name='SECOND')])
         self.assertIsNone(self.policy.own_employee('employee@example.test'))

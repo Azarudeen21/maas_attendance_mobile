@@ -99,10 +99,13 @@ class RetentionTests(unittest.TestCase):
                 {'doctype': self.record.doctype, 'name': 'ID', 'file': 'FILE', 'url': self.record.punch_photo})
         self.frappe.delete_doc.side_effect = delete
         self.service._finish('JOB')
-        self.assertEqual(self.frappe.db.set_value.call_count, 2)
+        self.assertEqual(self.frappe.db.set_value.call_count, 3)
         audit = self.frappe.db.set_value.call_args_list[0].args[2]
         self.assertEqual(set(audit), {'punch_photo', 'photo_removed_at', 'photo_cleanup'})
-        self.assertEqual(self.frappe.db.set_value.call_args_list[1].args[2]['status'], 'Completed')
+        # The removed photo also disappears from its Employee Checkin.
+        self.assertEqual(self.frappe.db.set_value.call_args_list[1].args[:4],
+                         ('Employee Checkin', {'maas_punch_photo': self.record.punch_photo}, 'maas_punch_photo', None))
+        self.assertEqual(self.frappe.db.set_value.call_args_list[2].args[2]['status'], 'Completed')
         self.assertIsNone(self.frappe.flags.get('maas_photo_delete'))
 
     def test_storage_failure_never_marks_completed_and_restores_context(self):

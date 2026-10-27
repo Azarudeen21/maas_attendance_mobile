@@ -82,6 +82,9 @@ class MobileAttendanceIntegration(TestCase):
         self.assertFalse(api.attendance_status()['online_submission_enabled'])
         with self.assertRaises(frappe.PermissionError):
             api.punch(str(uuid.uuid4()), 'IN', datetime.now(timezone.utc).isoformat(), self.device_id, '1.4.0')
+        with self.assertRaises(frappe.PermissionError):  # Normal HRMS check-in is blocked too.
+            frappe.get_doc({'doctype': 'Employee Checkin', 'employee': self.employee, 'log_type': 'IN',
+                'time': frappe.utils.now_datetime()}).insert(ignore_permissions=True)
 
     def test_offline_upload_becomes_checkin_at_original_time(self):
         self.approved_device()
@@ -102,3 +105,12 @@ class MobileAttendanceIntegration(TestCase):
         self.approved_device()
         photo = {'image_base64': jpeg('white'), 'captured_at': datetime.now(timezone.utc).isoformat()}
         self.assertEqual(api.supervisor_identify(photo, self.device_id, self.secret)['decision'], 'no_face')
+        # A saved offline scan without a recognisable face is refused and stores nothing.
+        from maas_attendance_mobile.supervisor import ScanRefused
+        now = datetime.now(timezone.utc).isoformat()
+        scan = {'request_id': str(uuid.uuid4()), 'timestamp': now, 'device_id': self.device_id, 'app_version': '1.4.5',
+                'photo': photo, 'location': {'latitude': 24.7, 'longitude': 46.7, 'accuracy_m': 5, 'timestamp': now,
+                                             'precise': True, 'is_mocked': False}}
+        with self.assertRaises(ScanRefused):
+            api.supervisor_offline_punch(frappe.as_json(scan), self.secret)
+        self.assertFalse(frappe.db.exists('Mobile Attendance Transaction', scan['request_id']))

@@ -15,6 +15,8 @@ the **Frappe HR mobile app** (`maas_hr_mobile`), which opens the site's normal
 - **Normal HRMS check-in** for employees set to Online + Without Photo.
 - **Supervisor face check-in**: a supervisor scans an employee with their own
   approved phone; the server identifies the face (bundled YuNet + SFace models).
+  Without a connection the scan is saved and identified when it uploads; the
+  server then records the employee's next IN or OUT at the scan time.
 - **Face enrollment** from Employee photos, single or bulk, and **Test face match**.
 - **Phone registration** with HR approval and revocation.
 - **Private photos** with per-company retention and an hourly cleanup job.
@@ -67,15 +69,25 @@ An employee may use a channel when **all** of these allow it:
 A box never re-enables a switch that is off. With no channel box ticked the
 employee cannot use the app. Both boxes: online when connected, offline when not.
 
+With face recognition on, a check-in photo must match the employee's own
+enrolled face (an employee without an enrolled face cannot check in with a
+photo). An online punch whose face does not match is refused and nothing is
+stored; the app shows why and the employee can check in again. An offline punch
+whose face does not match is kept in Offline Claims to Review ("Face check
+failed") with its photo and original time for HR to approve or reject. The
+photo and a *With Photo* box appear on the Employee Checkin.
+
 Photo boxes: *With Photo* only → photo required; *Without Photo* only → no photo
 (even if the company requires photos); both → optional (the app asks);
 neither → the company setting. *Online + Without Photo* (without *With Photo*)
 uses the normal HRMS Check in button.
 
 Online check-ins need an approved phone when the company requires it; offline
-uploads always do. Employees with a channel box ticked cannot add or delete
-their own Employee Checkins directly; HR users recording check-ins for others
-are not affected.
+uploads always do. An employee whose Online check-in is not enabled cannot use
+the normal HRMS Check in button, and the app lets offline-only employees punch
+only when there is no connection. Employees with a box ticked, or in a company
+where mobile attendance is on, cannot add or delete their own Employee
+Checkins directly; HR users recording check-ins for others are not affected.
 
 ## Daily HR work
 
@@ -128,6 +140,7 @@ The server always derives the employee from the login.
 | `attendance_history` (GET) | App | Own check-ins, 20 per page |
 | `submit_offline_claim` (POST), `offline_claim_status` (GET) | App | Offline upload and result |
 | `supervisor_identify`, `supervisor_punch` (POST) | App (supervisor) | Face scan and confirmed check-in |
+| `supervisor_offline_punch` (POST) | App (supervisor) | Upload a scan saved offline; the server identifies the employee |
 | `review_offline_claim` (POST) | HR | Approve or reject a conflict |
 | `face_test_match`, `face_enroll_employee`, `face_enroll_employee_photos` (POST) | HR | Face tools |
 | `photo_retention_preview` (GET), `photo_retention_hold` (POST) | HR | Photo retention |

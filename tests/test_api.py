@@ -25,7 +25,7 @@ class ApiTests(unittest.TestCase):
         self.frappe = types.ModuleType("frappe")
         self.frappe.__version__ = "16.36.1"
         self.frappe.session = types.SimpleNamespace(user="employee@example.test")
-        self.frappe.db = types.SimpleNamespace(get_value=Mock(return_value=1), get_singles_dict=Mock(return_value={}))
+        self.frappe.db = types.SimpleNamespace(get_value=Mock(return_value=1), get_singles_dict=Mock(return_value={}), set_value=Mock())
         self.frappe.PermissionError = FakePermissionError
         self.frappe.AuthenticationError = FakeAuthenticationError
         self.frappe.ValidationError = ValueError
@@ -55,12 +55,19 @@ class ApiTests(unittest.TestCase):
         import maas_attendance_mobile.policy
         self.policy = importlib.reload(maas_attendance_mobile.policy)
         self.real_resolve = self.policy.resolve
-        self.rules = dict(online=True, offline=True, require_photo=False, photo_optional=False,
+        self.rules = dict(online=True, offline=True, offline_sync=True, require_photo=False, photo_optional=False,
                           require_location=False, require_device=False, standard_checkin=False)
         self.policy.resolve = lambda employee: dict(self.rules)
+        # Photo scenarios use synthetic images; test_faces covers own_face_problem().
+        import maas_attendance_mobile.faces
+        self.faces = maas_attendance_mobile.faces
+        self.real_face_check = self.faces.own_face_problem
+        self.face_problem = None
+        self.faces.own_face_problem = lambda employee, company, content: self.face_problem
 
     def tearDown(self):
         self.policy.resolve = self.real_resolve
+        self.faces.own_face_problem = self.real_face_check
         for name, module in self.previous.items():
             if module is None:
                 sys.modules.pop(name, None)

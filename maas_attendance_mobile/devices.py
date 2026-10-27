@@ -31,6 +31,17 @@ def record(employee, device_id, device_secret, *, lock=False):
     return row
 
 
+def status(employee, device_id, device_secret):
+    """A phone never registered for this employee is a normal state, not an error."""
+    try:
+        name, _ = credential(device_id, device_secret, employee["name"])
+    except ValueError:
+        frappe.throw("Invalid device credentials.", frappe.PermissionError)
+    if not frappe.db.exists(DEVICE, name):
+        return {"api_version": 1, "device_id": device_id, "status": "Not registered", "device_label": None}
+    return reply(record(employee, device_id, device_secret))
+
+
 def reply(row):
     return {"api_version": 1, "device_id": row["device_id"], "status": row["status"], "device_label": row["device_label"]}
 

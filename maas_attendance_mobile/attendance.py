@@ -109,6 +109,10 @@ def submit(employee, request_id, log_type, timestamp, device_id, app_version, lo
         from maas_attendance_mobile.photos import check_timing
         try: check_timing(event, photo_at, location, sampled_at if location else None, datetime.now(timezone.utc))
         except ValueError as error: frappe.throw(str(error), frappe.ValidationError)
+        from maas_attendance_mobile.faces import FaceMismatch, own_face_problem
+        problem = own_face_problem(employee["name"], current["company"], photo_bytes)
+        if problem:
+            frappe.throw(problem, FaceMismatch)
 
     gps = None
     if rules["require_location"]:
@@ -156,8 +160,8 @@ def submit(employee, request_id, log_type, timestamp, device_id, app_version, lo
             "photo_captured_at": payload.get('photo', {}).get('captured_at'),
         }).insert(ignore_permissions=True)
         if photo_bytes:
-            from maas_attendance_mobile.photos import save_private
-            save_private(RECEIPT, receipt.name, photo_bytes)
+            from maas_attendance_mobile.photos import link_checkin, save_private
+            link_checkin(checkin.name, save_private(RECEIPT, receipt.name, photo_bytes))
     finally:
         frappe.flags[CONTEXT] = previous
     # No commits here: checkin + UUID-primary-key receipt succeed or roll back
@@ -177,6 +181,8 @@ def guard_checkin(doc, method=None):
     if not context and doc.is_new() and policy.allows_standard_checkin(doc.employee, user):
         return  # "Check in Without Photo" employees use normal HRMS check-in.
     if not context or context.get("user") != user or context.get("employee") != doc.employee or not doc.is_new():
+        if not policy.resolve(doc.employee)["online"]:
+            frappe.throw("Online check-in is not enabled for you. Contact HR.", frappe.PermissionError)
         frappe.throw("Use the mobile app to record your attendance.", frappe.PermissionError)
 
 

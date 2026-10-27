@@ -1,5 +1,7 @@
 import importlib
+import json
 import unittest
+import uuid
 from datetime import datetime, timezone
 from unittest.mock import Mock, patch
 
@@ -114,6 +116,49 @@ class SupervisorTests(unittest.TestCase):
         self.assertTrue(self.punch()['duplicate'])
         self.assertFalse(self.base.created)
         with self.assertRaisesRegex(ValueError, 'already used'): self.punch(log_type='OUT')
+
+    def offline(self, **changes):
+        request = {key: self.args[key] for key in ('request_id', 'timestamp', 'device_id', 'app_version', 'photo', 'location')}
+        return self.service.offline_punch(self.employee, json.dumps(dict(request, **changes)), SECRET)
+
+    def test_offline_scan_identifies_employee_and_picks_next_action(self):
+        result = self.offline()
+        checkin, receipt = self.base.created
+        self.assertEqual((checkin['employee'], checkin['log_type']), ('HR-EMP-WORKER', 'IN'))
+        self.assertTrue(checkin['device_id'].startswith('MAAS-OFFLINE:'))
+        self.assertEqual((receipt['capture_mode'], receipt['supervisor']), ('Supervisor', 'employee@example.test'))
+        self.assertEqual(result['employee_name'], 'Worker One')
+        self.base.created.clear()
+        self.base.latest = {'name': 'C1', 'log_type': 'IN', 'time': datetime(2020, 1, 1)}
+        self.offline(request_id=str(uuid.uuid4()))
+        self.assertEqual(self.base.created[0]['log_type'], 'OUT')  # Server decides IN or OUT.
+
+    def test_offline_scan_that_cannot_be_recorded_is_refused_and_stores_nothing(self):
+        self.match = {'HR-EMP-WORKER': 0.30}
+        with self.assertRaisesRegex(self.service.ScanRefused, 'not recognised'): self.offline()
+        self.match = {'HR-EMP-WORKER': 0.82, 'HR-EMP-OTHER': 0.21}
+        self.base.rules.update(online=False, offline=False)
+        with self.assertRaisesRegex(self.service.ScanRefused, 'not enabled for Worker One'): self.offline()
+        self.base.rules.update(online=True, offline_sync=False)
+        with self.assertRaisesRegex(self.service.ScanRefused, 'not enabled'): self.offline()
+        self.base.rules.update(online=False, offline=True, offline_sync=True)  # Offline box alone is enough.
+        self.offline()
+        self.assertEqual(len(self.base.created), 2)
+
+    def test_offline_scan_retry_returns_original_receipt(self):
+        self.offline()
+        self.base.receipt = dict(self.base.created[1], name=REQUEST); self.base.created.clear()
+        self.assertTrue(self.offline()['duplicate'])
+        self.assertFalse(self.base.created)
+
+    def test_confirm_saved_offline_after_lost_reply_is_not_recorded_twice(self):
+        self.punch()  # Live confirm reached the server, but the phone never got the reply.
+        self.base.receipt = dict(self.base.created[1], name=REQUEST); self.base.created.clear()
+        result = self.offline()  # Same request ID, saved offline by the app.
+        self.assertTrue(result['duplicate'])
+        self.assertFalse(self.base.created)
+        self.base.receipt['supervisor'] = 'someone.else@example.test'
+        with self.assertRaisesRegex(ValueError, 'already used'): self.offline()
 
     def test_status_reports_supervisor_availability(self):
         self.assertTrue(self.base.base.api.attendance_status()['supervisor_checkin_enabled'])

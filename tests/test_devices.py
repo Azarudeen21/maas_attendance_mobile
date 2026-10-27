@@ -90,6 +90,14 @@ class DeviceTests(unittest.TestCase):
         with self.assertRaises(test_api.FakePermissionError):
             self.service.record(self.employee, DEVICE, SECRET)
 
+    def test_status_of_unregistered_phone_is_not_an_error(self):
+        self.frappe.db.exists = Mock(side_effect=lambda doctype, name: self.row is not None)
+        self.assertEqual(self.service.status(self.employee, DEVICE, SECRET)['status'], 'Not registered')
+        self.register()
+        self.assertEqual(self.service.status(self.employee, DEVICE, SECRET)['device_id'], DEVICE)
+        with self.assertRaises(test_api.FakePermissionError):  # Wrong secret is still refused.
+            self.service.status(self.employee, DEVICE, 'b' * 64)
+
     def test_limit_and_employee_revalidation_prevent_inserts(self):
         self.frappe.get_all.return_value = [{'name': str(n)} for n in range(5)]
         with self.assertRaises(ValueError):

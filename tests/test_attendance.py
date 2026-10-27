@@ -218,8 +218,10 @@ class AttendanceTests(unittest.TestCase):
 
     def test_app_user_cannot_write_own_checkin_directly_even_when_switched_off(self):
         doc = self.app_user()
-        self.rules['online'] = False
         with self.assertRaisesRegex(test_api.FakePermissionError, 'mobile app'):
+            self.service.guard_checkin(doc)
+        self.rules['online'] = False
+        with self.assertRaisesRegex(test_api.FakePermissionError, 'Online check-in is not enabled'):
             self.service.guard_checkin(doc)
         with self.assertRaises(test_api.FakePermissionError):
             self.service.guard_delete(doc)

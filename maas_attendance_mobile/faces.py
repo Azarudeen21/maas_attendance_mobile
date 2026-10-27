@@ -36,6 +36,11 @@ class FaceError(ValueError):
         self.code = code
 
 
+class FaceMismatch(frappe.ValidationError):
+    """A check-in photo that is not the employee's own face. The app drops that
+    punch, shows the message and lets the employee check in again."""
+
+
 def truthy(value):
     return value in (1, '1', True)
 
@@ -184,6 +189,28 @@ def rank(vector, company=None, *, ignore_permissions=False):
         score = sum(a * b for a, b in zip(stored, vector))
         scores[row['employee']] = max(score, scores.get(row['employee'], -1.0))
     return scores, active
+
+
+def own_face_problem(employee, company, content):
+    """A self check-in photo must show this employee. None when it does, else why not.
+
+    Only applies while face recognition is on; the whole company is compared so a
+    colleague's face never passes as this employee's."""
+    site = frappe.db.get_singles_dict(SETTINGS)
+    if not truthy(site.get('enable_face_recognition')):
+        return None
+    if not frappe.db.exists(ENROLLMENT, {'employee': employee, 'enabled': 1, 'model_version': MODEL_VERSION}):
+        return 'Your face is not enrolled. Ask HR to enroll you before checking in with a photo.'
+    threshold, margin = limits(site)
+    try:
+        vector, _ = analyse(load_image(content))
+    except FaceError as error:
+        return str(error)
+    scores, _ = rank(vector, company, ignore_permissions=True)
+    decision, ranked = decide(scores, threshold, margin)
+    if decision != 'match' or ranked[0][0] != employee:
+        return 'The photo does not match your enrolled face. Take the photo yourself and try again.'
+    return None
 
 
 def _upload_bytes(image_base64):

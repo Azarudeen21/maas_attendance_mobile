@@ -125,6 +125,20 @@ class FaceMatchTests(FaceTestCase):
         self.assertEqual(self.frappe.get_list.call_args.kwargs['filters']['company'], 'Test Company')
         self.assertNotIn('EMP-B', [row['employee'] for row in result['candidates']])
 
+    def test_own_photo_must_be_this_employee(self):
+        self.frappe.get_all = Mock(side_effect=lambda doctype, **kwargs:
+                                   self.enrollments if doctype == self.faces.ENROLLMENT else self.employees)
+        check = lambda employee, vector: self.faces.own_face_problem(employee, 'Test Company', b'jpeg')
+        with patch.object(self.faces, 'load_image'), patch.object(self.faces, 'analyse', return_value=(unit(0), 0.9)):
+            self.assertIsNone(check('EMP-A', unit(0)))
+            self.assertIn('does not match', check('EMP-C', unit(0)))  # A colleague's face.
+            self.frappe.db.exists = Mock(return_value=False)
+            self.assertIn('not enrolled', check('EMP-A', unit(0)))
+        self.site['enable_face_recognition'] = 0
+        with patch.object(self.faces, 'analyse') as analyse:
+            self.assertIsNone(check('EMP-A', unit(0)))
+            analyse.assert_not_called()
+
     def test_detection_problems_are_reported_without_matching(self):
         result = self.match(None, error=self.faces.FaceError('multiple_faces', 'More than one face.'))
         self.assertEqual((result['decision'], result['candidates']), ('multiple_faces', []))

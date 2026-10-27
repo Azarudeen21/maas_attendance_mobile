@@ -126,6 +126,18 @@ class PhotoPunchTests(unittest.TestCase):
         self.assertEqual(receipt['photo_sha256'], self.photos.parse_photo(self.photo)[0]['sha256'])
         self.assertNotIn('image_base64', str(receipt))
 
+    def test_photo_must_show_this_employee_and_is_shown_on_the_checkin(self):
+        self.context.base.face_problem = 'The photo does not match your enrolled face.'
+        with patch.object(self.photos, 'save_private'):
+            with self.assertRaisesRegex(ValueError, 'does not match'):
+                self.context.submit(photo=self.photo, location=self.gps)
+        self.assertEqual(self.context.created, [])
+        self.context.base.face_problem = None
+        with patch.object(self.photos, 'save_private', return_value='/private/files/maas-punch-ID.jpg'):
+            self.context.submit(photo=self.photo, location=self.gps)
+        self.context.frappe.db.set_value.assert_any_call('Employee Checkin', 'CHECKIN-TEST',
+            {'maas_with_photo': 1, 'maas_punch_photo': '/private/files/maas-punch-ID.jpg'}, update_modified=False)
+
     def test_missing_photo_or_gps_blocks_new_punch(self):
         with self.assertRaisesRegex(ValueError, 'photo is required'): self.context.submit()
         with self.assertRaisesRegex(ValueError, 'GPS reading'): self.context.submit(photo=self.photo)
@@ -173,6 +185,19 @@ class OfflinePhotoTests(unittest.TestCase):
         save.assert_called_once()
         self.assertNotIn('image_base64', self.context.doc.payload_json)
         self.assertEqual([r['doctype'] for r in self.context.context.created], ['Mobile Attendance Offline Claim', 'Employee Checkin'])
+
+    def test_offline_face_mismatch_waits_for_hr_with_photo_and_original_time(self):
+        event = datetime.fromisoformat(self.context.request['timestamp'])
+        self.context.request['photo'] = image_payload(event + timedelta(seconds=10))
+        self.context.request['location'] = {'latitude': 24.7, 'longitude': 46.7, 'accuracy_m': 5, 'timestamp': (event + timedelta(seconds=15)).isoformat(), 'precise': True, 'is_mocked': False}
+        self.context.context.base.face_problem = 'The photo does not match your enrolled face.'
+        with patch.object(self.photos, 'save_private') as save:
+            result = self.context.submit()
+        self.assertEqual(result['status'], 'Pending Review')
+        self.assertTrue(result['sync_note'].startswith('Face check failed: '))
+        self.assertIsNone(result['checkin'])
+        save.assert_called_once()  # The photo stays as evidence for HR.
+        self.assertEqual([r['doctype'] for r in self.context.context.created], ['Mobile Attendance Offline Claim'])
 
 
 if __name__ == '__main__': unittest.main()
